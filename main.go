@@ -32,11 +32,11 @@ func ping(router *gin.Engine) *gin.Engine {
 }
 
 func main() {
-
-	err := godotenv.Load()
-
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if os.Getenv("ENV") == "dev" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
 	}
 
 	if err := sentry.Init(sentry.ClientOptions{
@@ -47,7 +47,7 @@ func main() {
 
 	router := setupRouter()
 	router = ping(router)
-	err = router.Run(":8080")
+	err := router.Run(":8080")
 
 	if err != nil {
 		log.Fatal("Ошибка запуска сервера:", err)
