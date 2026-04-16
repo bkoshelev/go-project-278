@@ -1,5 +1,5 @@
 # Указываем базовый образ Go (Alpine Linux) для этапа сборки backend
-FROM golang:1.25-alpine AS backend-builder
+FROM golang:1.26-alpine AS backend-builder
 
 # Устанавливаем git, необходимый для загрузки зависимостей из VCS
 RUN apk add --no-cache git
