@@ -1,4 +1,4 @@
-include .env
+-include .env
 
 GOPATH := $(shell go env GOPATH)
 
