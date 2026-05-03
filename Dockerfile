@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 go mod download
 
 # Устанавливаем утилиту goose для работы с миграциями БД
-# RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
 
 # Копируем весь исходный код проекта в контейнер
 COPY . .
@@ -34,10 +34,10 @@ WORKDIR /app
 COPY --from=backend-builder /build/app /app/bin/app
 
 # Копируем миграции базы данных в runtime-образ
-# COPY --from=backend-builder build/code/db/migrations /app/db/migrations
+COPY --from=backend-builder build/code/internal/db/migrations /app/db/migrations
 
 # Копируем бинарник goose из builder-этапа в финальный образ
-# COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
+COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
 
 # Копируем скрипт запуска приложения
 COPY bin/run.sh /app/bin/run.sh

@@ -1,3 +1,7 @@
+include .env
+
+GOPATH := $(shell go env GOPATH)
+
 dev:
 	~/go/bin/air
 
@@ -16,3 +20,9 @@ lint-fix:
 
 test:
 	go test ./...
+
+generate:
+	$(GOPATH)/bin/sqlc generate
+
+migrate:
+	$(GOPATH)/bin/goose --dir ./internal/db/migrations postgres $(DATABASE_URL) up

@@ -10,7 +10,7 @@ echo "[run.sh] Running DB migrations"
 # - используем директорию с миграциями ./db/migrations
 # - подключаемся к PostgreSQL через переменную окружения DATABASE_URL
 # - применяем все доступные миграции вверх (up)
-# goose -dir ./db/migrations postgres "${DATABASE_URL}" up
+goose -dir ./db/migrations postgres "${DATABASE_URL}" up
 
 echo "[run.sh] Starting Go app"
 
