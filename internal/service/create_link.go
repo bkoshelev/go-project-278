@@ -26,7 +26,7 @@ func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.S
 	shortLink, err := s.q.CreateShortLink(context.Background(), db.CreateShortLinkParams{
 		OriginalUrl: originalUrl,
 		ShortName:   shortName,
-		ShortUrl:    os.Getenv("HOST") + ":" + os.Getenv("HOST") + "/" + shortName,
+		ShortUrl:    os.Getenv("HOST") + "/r/" + shortName,
 	})
 
 	if err != nil {

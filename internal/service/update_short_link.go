@@ -26,7 +26,7 @@ func (s *ShortLinksService) UpdateShortLink(id int32, originalUrl, shortName str
 			ID:          id,
 			OriginalUrl: originalUrl,
 			ShortName:   shortName,
-			ShortUrl:    os.Getenv("HOST") + "/" + shortName,
+			ShortUrl:    os.Getenv("HOST") + "/r/" + shortName,
 		})
 	}
 
