@@ -27,6 +27,8 @@ jobs:
           cache: true
 
       - name: Test
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: go test ./... --race
   lint:
     runs-on: ubuntu-latest

@@ -182,7 +182,11 @@ func main() {
 	}
 	defer conn.Close()
 
-	queries := db.New(conn)
+	runApp(conn)
+}
+
+func runApp(dbConn *pgxpool.Pool) {
+	queries := db.New(dbConn)
 
 	router := setupRouter()
 	router = ping(router)
@@ -193,7 +197,7 @@ func main() {
 	router = deleteLink(router, queries)
 	router = unknownRoute(router)
 
-	err = router.Run(":" + os.Getenv("PORT"))
+	err := router.Run(":" + os.Getenv("PORT"))
 
 	if err != nil {
 		log.Fatal("Ошибка запуска сервера:", err)
