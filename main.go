@@ -246,7 +246,7 @@ func runApp(dbConn *pgxpool.Pool) {
 	router = deleteLink(router, queries)
 	router = unknownRoute(router)
 
-	err := router.Run(":" + os.Getenv("PORT"))
+	err := router.Run(":8080")
 
 	if err != nil {
 		log.Fatal("Ошибка запуска сервера:", err)

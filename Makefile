@@ -4,7 +4,8 @@ GOPATH := $(shell go env GOPATH)
 
 dev:
 	~/go/bin/air
-
+dev\:all:
+	npx concurrently "make dev" "npx start-hexlet-url-shortener-frontend"
 build:
 	go build -o bin/shorturl ./main.go
 

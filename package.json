@@ -1,0 +1,25 @@
+{
+  "name": "go-project-278",
+  "version": "1.0.0",
+  "description": "[![Actions Status](https://github.com/bkoshelev/go-project-278/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/bkoshelev/go-project-278/actions)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bkoshelev/go-project-278.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bkoshelev/go-project-278/issues"
+  },
+  "homepage": "https://github.com/bkoshelev/go-project-278#readme",
+  "dependencies": {
+    "@hexlet/project-url-shortener-frontend": "1.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "9.2.1"
+  }
+}
