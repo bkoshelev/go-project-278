@@ -9,10 +9,11 @@ import (
 )
 
 type Querier interface {
+	CountShortLinks(ctx context.Context) (int64, error)
 	CreateShortLink(ctx context.Context, arg CreateShortLinkParams) (ShortLink, error)
 	DeleteShortLink(ctx context.Context, id int32) (ShortLink, error)
 	GetShortLinkById(ctx context.Context, id int32) (ShortLink, error)
-	GetShortLinks(ctx context.Context) ([]ShortLink, error)
+	GetShortLinks(ctx context.Context, arg GetShortLinksParams) ([]ShortLink, error)
 	UpdateShortLink(ctx context.Context, arg UpdateShortLinkParams) (ShortLink, error)
 }
 

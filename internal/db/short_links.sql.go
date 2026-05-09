@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const countShortLinks = `-- name: CountShortLinks :one
+SELECT count(*) FROM short_links
+`
+
+func (q *Queries) CountShortLinks(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countShortLinks)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createShortLink = `-- name: CreateShortLink :one
 INSERT INTO
     short_links (original_url, short_name, short_url)
@@ -101,10 +112,19 @@ SELECT
     created_at
 FROM
     short_links
+ORDER BY id
+LIMIT
+    COALESCE($2, 20)
+OFFSET $1
 `
 
-func (q *Queries) GetShortLinks(ctx context.Context) ([]ShortLink, error) {
-	rows, err := q.db.Query(ctx, getShortLinks)
+type GetShortLinksParams struct {
+	Offset int32       `json:"offset"`
+	Limit  interface{} `json:"limit"`
+}
+
+func (q *Queries) GetShortLinks(ctx context.Context, arg GetShortLinksParams) ([]ShortLink, error) {
+	rows, err := q.db.Query(ctx, getShortLinks, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

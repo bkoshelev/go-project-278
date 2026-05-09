@@ -32,7 +32,11 @@ SELECT
     short_url,
     created_at
 FROM
-    short_links;
+    short_links
+ORDER BY id
+LIMIT
+    COALESCE(sqlc.narg('limit'), 20)
+OFFSET $1;
 
 -- name: UpdateShortLink :one
 UPDATE short_links
@@ -55,3 +59,6 @@ WHERE
     short_name,
     short_url,
     created_at;
+
+-- name: CountShortLinks :one
+SELECT count(*) FROM short_links;

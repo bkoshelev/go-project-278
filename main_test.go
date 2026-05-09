@@ -73,6 +73,12 @@ func TestMain(m *testing.M) {
 	}
 	cancel()
 
+	_, err = conn.Exec(ctx, "TRUNCATE short_links RESTART IDENTITY")
+
+	if err != nil {
+		log.Fatalf("fail to prepare short_links table")
+	}
+
 	os.Exit(m.Run())
 }
 
@@ -128,6 +134,58 @@ func TestGetLinks(t *testing.T) {
 
 		assert.Equal(t, 200, w.Code)
 		assert.Contains(t, get, expected)
+	})
+}
+
+func TestGetLinksWithPagination(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, q *db.Queries, _ pgx.Tx) {
+		router = createLink(router, q)
+		router = getShortLinks(router, q)
+
+		var initial []TestShortLink
+
+		for i := 0; i < 10; i++ {
+			initial = append(initial, TestShortLink{
+				OriginalUrl: "https://example.com/" + strconv.Itoa(i),
+				ShortName:   "short_" + strconv.Itoa(i),
+				ShortUrl:    os.Getenv("HOST") + "/r/" + "short_" + strconv.Itoa(i),
+			})
+		}
+		for _, shortLink := range initial {
+			newShortLink := CreateLinkRequest{
+				OriginalUrl: shortLink.OriginalUrl,
+				ShortName:   shortLink.ShortName,
+			}
+
+			shortLinkJson, _ := json.Marshal(newShortLink)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, 201, w.Code)
+
+		}
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/links?range=[0,4]", nil)
+		router.ServeHTTP(w, req)
+
+		get := []TestShortLink{}
+		err := json.Unmarshal(w.Body.Bytes(), &get)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+
+		expected := initial[:5]
+
+		assert.Equal(t, 200, w.Code)
+		assert.Contains(t, w.Result().Header["Content-Range"], "links 0-4/10")
+		assert.Equal(t, 5, len(get))
+		assert.Equal(t, get, expected)
 	})
 }
 

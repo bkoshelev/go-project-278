@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -65,16 +66,64 @@ func createLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
 	return router
 }
 
+type Range struct {
+	Begin int
+	End   int
+}
+
+type Query struct {
+	Range Range `form:"range"`
+}
+
+func (r *Range) UnmarshalParam(param string) error {
+	fmt.Println("начинаем парсить пагинацию")
+	var arr [2]int
+
+	if err := json.Unmarshal([]byte(param), &arr); err != nil {
+		return fmt.Errorf("invalid format, expected [start,end]")
+	}
+
+	if len(arr) != 2 {
+		return fmt.Errorf("range must contain exactly 2 values")
+	}
+
+	r.Begin = arr[0]
+	r.End = arr[1]
+	fmt.Printf("закончили парсить пагинацию %v", r)
+
+	return nil
+}
+
 func getShortLinks(router *gin.Engine, queries *db.Queries) *gin.Engine {
 	router.GET("/api/links", func(c *gin.Context) {
+		query := Query{Range: Range{Begin: 0, End: 10}}
+		if c.Query("range") != "" {
+			_ = c.BindQuery(&query)
+		}
+		begin := query.Range.Begin
+		end := query.Range.End
 
-		shortLinks, err := service.NewShortLinksService(queries).GetLinks()
+		shortLinks, err := service.NewShortLinksService(queries).GetLinks(
+			db.GetShortLinksParams{
+				Limit:  end - begin + 1,
+				Offset: int32(begin),
+			},
+		)
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
 
+		countLinks, err := service.NewShortLinksService(queries).CountLinks()
+
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.Header("Content-Range", fmt.Sprintf(
+			"links %v-%v/%v", begin, end, countLinks))
 		c.JSON(200, shortLinks)
 	})
 
