@@ -13,16 +13,28 @@ import (
 	"time"
 
 	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var conn *pgxpool.Pool
 
-func withTx(t *testing.T, fn func(ctx context.Context, q *db.Queries, tx pgx.Tx)) {
+type MockIdGenerator struct {
+	mock.Mock
+}
+
+var mockShortName string = "test_short_url"
+
+func (m *MockIdGenerator) New() (string, error) {
+	return mockShortName, nil
+}
+
+func withTx(t *testing.T, fn func(ctx context.Context, services *service.ShortLinksService, tx pgx.Tx)) {
 	log.Print("Начинаем готовить транзакцию")
 
 	t.Helper()
@@ -43,8 +55,9 @@ func withTx(t *testing.T, fn func(ctx context.Context, q *db.Queries, tx pgx.Tx)
 
 	qtx := db.New(tx)
 	qtx = qtx.WithTx(tx)
+	services := service.NewShortLinksService(qtx, new(MockIdGenerator))
 	log.Print("Стартуем тест")
-	fn(ctx, qtx, tx)
+	fn(ctx, services, tx)
 }
 
 func TestMain(m *testing.M) {
@@ -73,6 +86,7 @@ func TestMain(m *testing.M) {
 	}
 	cancel()
 
+	// _, err = conn.Exec(ctx, "TRUNCATE link_visits, short_links RESTART IDENTITY")
 	_, err = conn.Exec(ctx, "TRUNCATE short_links RESTART IDENTITY")
 
 	if err != nil {
@@ -97,9 +111,9 @@ func TestPingRoute(t *testing.T) {
 func TestGetLinks(t *testing.T) {
 	router := setupRouter()
 
-	withTx(t, func(ctx context.Context, q *db.Queries, _ pgx.Tx) {
-		router = createLink(router, q)
-		router = getShortLinks(router, q)
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+		router = getShortLinks(router, services)
 
 		newShortLink := CreateLinkRequest{
 			OriginalUrl: "https://example.com",
@@ -140,9 +154,9 @@ func TestGetLinks(t *testing.T) {
 func TestGetLinksWithPagination(t *testing.T) {
 	router := setupRouter()
 
-	withTx(t, func(ctx context.Context, q *db.Queries, _ pgx.Tx) {
-		router = createLink(router, q)
-		router = getShortLinks(router, q)
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+		router = getShortLinks(router, services)
 
 		var initial []TestShortLink
 
@@ -198,8 +212,8 @@ type TestShortLink struct {
 func TestCreateLink(t *testing.T) {
 	router := setupRouter()
 
-	withTx(t, func(ctx context.Context, q *db.Queries, _ pgx.Tx) {
-		router = createLink(router, q)
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
 
 		newShortLink := CreateLinkRequest{
 			OriginalUrl: "https://example.com",
@@ -231,12 +245,47 @@ func TestCreateLink(t *testing.T) {
 	})
 }
 
+func TestCreateLinkWithRandomName(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+
+		newShortLink := CreateLinkRequest{
+			OriginalUrl: "https://example.com",
+		}
+
+		expected := TestShortLink{
+			OriginalUrl: "https://example.com",
+			ShortName:   mockShortName,
+			ShortUrl:    os.Getenv("HOST") + "/r/" + mockShortName,
+		}
+
+		shortLinkJson, _ := json.Marshal(newShortLink)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+		router.ServeHTTP(w, req)
+
+		get := TestShortLink{}
+
+		err := json.Unmarshal(w.Body.Bytes(), &get)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+
+		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, expected, get)
+	})
+}
+
 func TestGetLinksById(t *testing.T) {
 	router := setupRouter()
 
-	withTx(t, func(ctx context.Context, q *db.Queries, _ pgx.Tx) {
-		router = createLink(router, q)
-		router = getShortLinkById(router, q)
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+		router = getShortLinkById(router, services)
 
 		newShortLink := CreateLinkRequest{
 			OriginalUrl: "https://example.com",
@@ -283,9 +332,9 @@ func TestGetLinksById(t *testing.T) {
 func TestUpdateLink(t *testing.T) {
 	router := setupRouter()
 
-	withTx(t, func(ctx context.Context, q *db.Queries, _ pgx.Tx) {
-		router = createLink(router, q)
-		router = updateLink(router, q)
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+		router = updateLink(router, services)
 
 		newShortLink := CreateLinkRequest{
 			OriginalUrl: "https://example.com",
@@ -324,9 +373,9 @@ func TestUpdateLink(t *testing.T) {
 func TestDeleteLink(t *testing.T) {
 	router := setupRouter()
 
-	withTx(t, func(ctx context.Context, q *db.Queries, _ pgx.Tx) {
-		router = createLink(router, q)
-		router = deleteLink(router, q)
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+		router = deleteLink(router, services)
 
 		newShortLink := CreateLinkRequest{
 			OriginalUrl: "https://example.com",

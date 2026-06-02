@@ -8,13 +8,12 @@ import (
 	"github.com/bkoshelev/go-project-278/internal/db"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.ShortLink, error) {
 
 	if shortName == "" {
-		customShortName, err := gonanoid.New()
+		customShortName, err := s.idGenerator.New()
 
 		if err != nil {
 			return db.ShortLink{}, ErrShortName

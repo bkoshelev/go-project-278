@@ -4,14 +4,16 @@ import (
 	"errors"
 
 	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/internal/gen_id"
 )
 
 type ShortLinksService struct {
-	q *db.Queries
+	q           *db.Queries
+	idGenerator gen_id.IdGenerator
 }
 
-func NewShortLinksService(q *db.Queries) *ShortLinksService {
-	return &ShortLinksService{q}
+func NewShortLinksService(q *db.Queries, id_gen gen_id.IdGenerator) *ShortLinksService {
+	return &ShortLinksService{q, id_gen}
 }
 
 var (

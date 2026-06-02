@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/internal/gen_id"
 	"github.com/bkoshelev/go-project-278/internal/service"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
@@ -44,7 +45,7 @@ type CreateLinkRequest struct {
 	ShortName   string `json:"short_name"`
 }
 
-func createLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
+func createLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.POST("/api/links", func(c *gin.Context) {
 		var req CreateLinkRequest
 
@@ -53,7 +54,7 @@ func createLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
 			return
 		}
 
-		shortLink, err := service.NewShortLinksService(queries).CreateShortLink(req.OriginalUrl, req.ShortName)
+		shortLink, err := services.CreateShortLink(req.OriginalUrl, req.ShortName)
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -94,7 +95,7 @@ func (r *Range) UnmarshalParam(param string) error {
 	return nil
 }
 
-func getShortLinks(router *gin.Engine, queries *db.Queries) *gin.Engine {
+func getShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.GET("/api/links", func(c *gin.Context) {
 		query := Query{Range: Range{Begin: 0, End: 10}}
 		if c.Query("range") != "" {
@@ -103,7 +104,7 @@ func getShortLinks(router *gin.Engine, queries *db.Queries) *gin.Engine {
 		begin := query.Range.Begin
 		end := query.Range.End
 
-		shortLinks, err := service.NewShortLinksService(queries).GetLinks(
+		shortLinks, err := services.GetLinks(
 			db.GetShortLinksParams{
 				Limit:  end - begin + 1,
 				Offset: int32(begin),
@@ -115,7 +116,7 @@ func getShortLinks(router *gin.Engine, queries *db.Queries) *gin.Engine {
 			return
 		}
 
-		countLinks, err := service.NewShortLinksService(queries).CountLinks()
+		countLinks, err := services.CountLinks()
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -130,7 +131,7 @@ func getShortLinks(router *gin.Engine, queries *db.Queries) *gin.Engine {
 	return router
 }
 
-func getShortLinkById(router *gin.Engine, queries *db.Queries) *gin.Engine {
+func getShortLinkById(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.GET("/api/links/:id", func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 
@@ -139,7 +140,7 @@ func getShortLinkById(router *gin.Engine, queries *db.Queries) *gin.Engine {
 			return
 		}
 
-		shortLink, err := service.NewShortLinksService(queries).GetLinkById(int32(id))
+		shortLink, err := services.GetLinkById(int32(id))
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -152,7 +153,7 @@ func getShortLinkById(router *gin.Engine, queries *db.Queries) *gin.Engine {
 	return router
 }
 
-func updateLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
+func updateLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.PUT("/api/links/:id", func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 
@@ -168,7 +169,7 @@ func updateLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
 			return
 		}
 
-		err = service.NewShortLinksService(queries).UpdateShortLink(int32(id), req.OriginalUrl, req.ShortName)
+		err = services.UpdateShortLink(int32(id), req.OriginalUrl, req.ShortName)
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -181,7 +182,7 @@ func updateLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
 	return router
 }
 
-func deleteLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
+func deleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.DELETE("/api/links/:id", func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 
@@ -190,7 +191,7 @@ func deleteLink(router *gin.Engine, queries *db.Queries) *gin.Engine {
 			return
 		}
 
-		err = service.NewShortLinksService(queries).DeleteShortLink(int32(id))
+		err = services.DeleteShortLink(int32(id))
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -239,11 +240,12 @@ func runApp(dbConn *pgxpool.Pool) {
 
 	router := setupRouter()
 	router = ping(router)
-	router = getShortLinks(router, queries)
-	router = createLink(router, queries)
-	router = getShortLinkById(router, queries)
-	router = updateLink(router, queries)
-	router = deleteLink(router, queries)
+	services := service.NewShortLinksService(queries, gen_id.CreateIdGenerator())
+	router = getShortLinks(router, services)
+	router = createLink(router, services)
+	router = getShortLinkById(router, services)
+	router = updateLink(router, services)
+	router = deleteLink(router, services)
 	router = unknownRoute(router)
 
 	err := router.Run(":8080")

@@ -13,22 +13,21 @@ import (
 
 func (s *ShortLinksService) UpdateShortLink(id int32, originalUrl, shortName string) error {
 
-	var err error
-
 	if shortName == "" {
-		_, err = s.q.UpdateShortLink(context.Background(), db.UpdateShortLinkParams{
-			ID:          id,
-			OriginalUrl: originalUrl,
-		})
+		customShortName, err := s.idGenerator.New()
 
-	} else {
-		_, err = s.q.UpdateShortLink(context.Background(), db.UpdateShortLinkParams{
-			ID:          id,
-			OriginalUrl: originalUrl,
-			ShortName:   shortName,
-			ShortUrl:    os.Getenv("HOST") + "/r/" + shortName,
-		})
+		if err != nil {
+			return ErrShortName
+		}
+		shortName = customShortName
 	}
+
+	_, err := s.q.UpdateShortLink(context.Background(), db.UpdateShortLinkParams{
+		ID:          id,
+		OriginalUrl: originalUrl,
+		ShortName:   shortName,
+		ShortUrl:    os.Getenv("HOST") + "/r/" + shortName,
+	})
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
