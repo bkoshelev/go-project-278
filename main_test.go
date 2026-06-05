@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -326,6 +327,96 @@ func TestGetLinksById(t *testing.T) {
 
 		assert.Equal(t, 200, w.Code)
 		assert.Equal(t, get, expected)
+	})
+}
+
+func TestRedirectShortLink(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, tx pgx.Tx) {
+		// err = router.SetTrustedProxies([]string{"127.0.0.1"})
+
+		// if err != nil {
+		// 	panic("Ошибка парсинга Content Range")
+		// }
+
+		router = createLink(router, services)
+		router = redirectShortLink(router, services)
+		router = getLinkVisits(router, services)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/link_visits", nil)
+		router.ServeHTTP(w, req)
+
+		type ContentRange struct {
+			From  int
+			To    int
+			Total int
+		}
+
+		var ContentRangeBeforeNewVisit ContentRange
+
+		_, err := fmt.Sscanf(
+			w.Header().Get("Content-Range"),
+			"link_visits %d-%d/%d",
+			&ContentRangeBeforeNewVisit.From,
+			&ContentRangeBeforeNewVisit.To,
+			&ContentRangeBeforeNewVisit.Total,
+		)
+
+		if err != nil {
+			panic("Ошибка парсинга Content Range")
+		}
+
+		newShortLink := CreateLinkRequest{
+			OriginalUrl: "https://example.com",
+			ShortName:   "short",
+		}
+
+		shortLinkJson, _ := json.Marshal(newShortLink)
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, 201, w.Code)
+
+		createdShortLink := db.ShortLink{}
+		err = json.Unmarshal(w.Body.Bytes(), &createdShortLink)
+
+		if err != nil {
+			panic("Ошибка парсинга JSON")
+		}
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("GET", "/r/short", nil)
+		req.RemoteAddr = "127.0.0.1:12345"
+		req.Header.Set("Referer", "https://url-shorter_ui.com")
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusFound, w.Code)
+		assert.Equal(t, "https://example.com", w.Header().Get("Location"))
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("GET", "/api/link_visits", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, 200, w.Code)
+
+		var ContentRangeAfterNewVisit ContentRange
+
+		_, err = fmt.Sscanf(
+			w.Header().Get("Content-Range"),
+			"link_visits %d-%d/%d",
+			&ContentRangeAfterNewVisit.From,
+			&ContentRangeAfterNewVisit.To,
+			&ContentRangeAfterNewVisit.Total,
+		)
+
+		if err != nil {
+			panic("Ошибка парсинга Content Range")
+		}
+		assert.Equal(t, ContentRangeBeforeNewVisit.Total+1, ContentRangeAfterNewVisit.Total)
 	})
 }
 
