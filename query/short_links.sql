@@ -24,6 +24,18 @@ FROM
 WHERE
     id = sqlc.arg (id);
 
+-- name: GetShortLinkByShortName :one
+SELECT
+    id,
+    original_url,
+    short_name,
+    short_url,
+    created_at
+FROM
+    short_links
+WHERE
+    short_name = sqlc.arg (short_name);
+
 -- name: GetShortLinks :many
 SELECT
     id,
@@ -62,3 +74,40 @@ WHERE
 
 -- name: CountShortLinks :one
 SELECT count(*) FROM short_links;
+
+-- name: CreateLinkVisit :one
+INSERT INTO
+    link_visits (ip, link_id, user_agent, referer, status)
+VALUES
+    (
+        sqlc.arg (ip),
+        sqlc.arg (link_id),
+        sqlc.arg (user_agent),
+        sqlc.arg (referer),
+        sqlc.arg (status)
+    ) RETURNING id,
+    ip,
+    link_id,
+    user_agent,
+    referer,
+    status,
+    created_at;
+
+-- name: GetLinkVisits :many
+SELECT
+    id,
+    ip,
+    link_id,
+    user_agent,
+    referer AS reffer,
+    status,
+    created_at
+FROM
+    link_visits
+ORDER BY id
+LIMIT
+    COALESCE(sqlc.narg('limit'), 20)
+OFFSET $1;
+
+-- name: CountLinkVisits :one
+SELECT count(*) FROM link_visits;

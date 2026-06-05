@@ -7,7 +7,21 @@ package db
 
 import (
 	"context"
+	"net/netip"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const countLinkVisits = `-- name: CountLinkVisits :one
+SELECT count(*) FROM link_visits
+`
+
+func (q *Queries) CountLinkVisits(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countLinkVisits)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const countShortLinks = `-- name: CountShortLinks :one
 SELECT count(*) FROM short_links
@@ -18,6 +32,64 @@ func (q *Queries) CountShortLinks(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const createLinkVisit = `-- name: CreateLinkVisit :one
+INSERT INTO
+    link_visits (ip, link_id, user_agent, referer, status)
+VALUES
+    (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5
+    ) RETURNING id,
+    ip,
+    link_id,
+    user_agent,
+    referer,
+    status,
+    created_at
+`
+
+type CreateLinkVisitParams struct {
+	Ip        netip.Addr  `json:"ip"`
+	LinkID    pgtype.Int4 `json:"link_id"`
+	UserAgent string      `json:"user_agent"`
+	Referer   string      `json:"referer"`
+	Status    int32       `json:"status"`
+}
+
+type CreateLinkVisitRow struct {
+	ID        pgtype.Int4        `json:"id"`
+	Ip        netip.Addr         `json:"ip"`
+	LinkID    pgtype.Int4        `json:"link_id"`
+	UserAgent string             `json:"user_agent"`
+	Referer   string             `json:"referer"`
+	Status    int32              `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateLinkVisit(ctx context.Context, arg CreateLinkVisitParams) (CreateLinkVisitRow, error) {
+	row := q.db.QueryRow(ctx, createLinkVisit,
+		arg.Ip,
+		arg.LinkID,
+		arg.UserAgent,
+		arg.Referer,
+		arg.Status,
+	)
+	var i CreateLinkVisitRow
+	err := row.Scan(
+		&i.ID,
+		&i.Ip,
+		&i.LinkID,
+		&i.UserAgent,
+		&i.Referer,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const createShortLink = `-- name: CreateShortLink :one
@@ -77,6 +149,66 @@ func (q *Queries) DeleteShortLink(ctx context.Context, id int32) (ShortLink, err
 	return i, err
 }
 
+const getLinkVisits = `-- name: GetLinkVisits :many
+SELECT
+    id,
+    ip,
+    link_id,
+    user_agent,
+    referer AS reffer,
+    status,
+    created_at
+FROM
+    link_visits
+ORDER BY id
+LIMIT
+    COALESCE($2, 20)
+OFFSET $1
+`
+
+type GetLinkVisitsParams struct {
+	Offset int32       `json:"offset"`
+	Limit  interface{} `json:"limit"`
+}
+
+type GetLinkVisitsRow struct {
+	ID        pgtype.Int4        `json:"id"`
+	Ip        netip.Addr         `json:"ip"`
+	LinkID    pgtype.Int4        `json:"link_id"`
+	UserAgent string             `json:"user_agent"`
+	Reffer    string             `json:"reffer"`
+	Status    int32              `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetLinkVisits(ctx context.Context, arg GetLinkVisitsParams) ([]GetLinkVisitsRow, error) {
+	rows, err := q.db.Query(ctx, getLinkVisits, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLinkVisitsRow
+	for rows.Next() {
+		var i GetLinkVisitsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Ip,
+			&i.LinkID,
+			&i.UserAgent,
+			&i.Reffer,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getShortLinkById = `-- name: GetShortLinkById :one
 SELECT
     id,
@@ -92,6 +224,32 @@ WHERE
 
 func (q *Queries) GetShortLinkById(ctx context.Context, id int32) (ShortLink, error) {
 	row := q.db.QueryRow(ctx, getShortLinkById, id)
+	var i ShortLink
+	err := row.Scan(
+		&i.ID,
+		&i.OriginalUrl,
+		&i.ShortName,
+		&i.ShortUrl,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getShortLinkByShortName = `-- name: GetShortLinkByShortName :one
+SELECT
+    id,
+    original_url,
+    short_name,
+    short_url,
+    created_at
+FROM
+    short_links
+WHERE
+    short_name = $1
+`
+
+func (q *Queries) GetShortLinkByShortName(ctx context.Context, shortName string) (ShortLink, error) {
+	row := q.db.QueryRow(ctx, getShortLinkByShortName, shortName)
 	var i ShortLink
 	err := row.Scan(
 		&i.ID,

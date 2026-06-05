@@ -5,8 +5,20 @@
 package db
 
 import (
+	"net/netip"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type LinkVisit struct {
+	Ip        netip.Addr         `json:"ip"`
+	UserAgent string             `json:"user_agent"`
+	Referer   string             `json:"referer"`
+	Status    int32              `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID        pgtype.Int4        `json:"id"`
+	LinkID    pgtype.Int4        `json:"link_id"`
+}
 
 type ShortLink struct {
 	ID          int32              `json:"id"`

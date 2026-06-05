@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,6 +29,7 @@ func setupRouter() *gin.Engine {
 	router.Use(sentrygin.New(sentrygin.Options{
 		Repanic: true,
 	}))
+	router.TrustedPlatform = gin.PlatformCloudflare
 
 	return router
 }
@@ -76,6 +78,7 @@ type Query struct {
 	Range Range `form:"range"`
 }
 
+// https://gin-gonic.com/en/docs/binding/bind-custom-unmarshaler/#using-bindunmarshaler
 func (r *Range) UnmarshalParam(param string) error {
 	fmt.Println("начинаем парсить пагинацию")
 	var arr [2]int
@@ -204,6 +207,75 @@ func deleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 	return router
 }
 
+func getLinkVisits(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
+	router.GET("/api/link_visits", func(c *gin.Context) {
+		query := Query{Range: Range{Begin: 0, End: 10}}
+		if c.Query("range") != "" {
+			_ = c.BindQuery(&query)
+		}
+		begin := query.Range.Begin
+		end := query.Range.End
+
+		shortLinks, err := services.GetLinkVisits(
+			db.GetLinkVisitsParams{
+				Limit:  end - begin + 1,
+				Offset: int32(begin),
+			},
+		)
+
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		countLinks, err := services.CountLinkVisits()
+
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.Header("Content-Range", fmt.Sprintf(
+			"link_visits %v-%v/%v", begin, end, countLinks))
+		c.JSON(200, shortLinks)
+	})
+
+	return router
+}
+
+func redirectShortLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
+	router.GET("/r/:code", func(c *gin.Context) {
+		shortLink, err := services.GetLinkByShortName(c.Param("code"))
+
+		if err != nil {
+			if errors.Is(err, service.ErrNoRows) {
+				c.JSON(http.StatusNotFound, gin.H{"error": service.ErrNoRows.Error()})
+				return
+			}
+
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		_, err = services.CreateLinkVisit(
+			c.ClientIP(),
+			shortLink.ID,
+			c.Request.UserAgent(),
+			c.Request.Referer(),
+			http.StatusFound,
+		)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.Redirect(http.StatusFound, shortLink.OriginalUrl)
+	})
+
+	return router
+}
+
 func unknownRoute(router *gin.Engine) *gin.Engine {
 	router.NoRoute(func(c *gin.Context) {
 		c.Status(http.StatusNotFound)
@@ -242,8 +314,10 @@ func runApp(dbConn *pgxpool.Pool) {
 	router = ping(router)
 	services := service.NewShortLinksService(queries, gen_id.CreateIdGenerator())
 	router = getShortLinks(router, services)
+	router = getLinkVisits(router, services)
 	router = createLink(router, services)
 	router = getShortLinkById(router, services)
+	router = redirectShortLink(router, services)
 	router = updateLink(router, services)
 	router = deleteLink(router, services)
 	router = unknownRoute(router)

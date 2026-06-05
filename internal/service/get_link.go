@@ -20,3 +20,15 @@ func (s *ShortLinksService) GetLinkById(id int32) (db.ShortLink, error) {
 	}
 	return shortLink, nil
 }
+
+func (s *ShortLinksService) GetLinkByShortName(shortName string) (db.ShortLink, error) {
+	shortLink, err := s.q.GetShortLinkByShortName(context.Background(), shortName)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return db.ShortLink{}, ErrNoRows
+		}
+		return db.ShortLink{}, ErrDB
+	}
+	return shortLink, nil
+}
