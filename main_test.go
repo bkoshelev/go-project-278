@@ -105,7 +105,7 @@ func TestPingRoute(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/ping", nil)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "pong", w.Body.String())
 }
 
@@ -133,7 +133,7 @@ func TestGetLinks(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 
 		w = httptest.NewRecorder()
 		req, _ = http.NewRequest("GET", "/api/links", nil)
@@ -147,7 +147,7 @@ func TestGetLinks(t *testing.T) {
 			panic("Ошибка преобразования полученного результата в JSON")
 		}
 
-		assert.Equal(t, 200, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, get, expected)
 	})
 }
@@ -180,7 +180,7 @@ func TestGetLinksWithPagination(t *testing.T) {
 			req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, 201, w.Code)
+			assert.Equal(t, http.StatusCreated, w.Code)
 
 		}
 
@@ -197,7 +197,7 @@ func TestGetLinksWithPagination(t *testing.T) {
 
 		expected := initial[:5]
 
-		assert.Equal(t, 200, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Result().Header["Content-Range"], "links 0-4/10")
 		assert.Equal(t, 5, len(get))
 		assert.Equal(t, get, expected)
@@ -241,7 +241,7 @@ func TestCreateLink(t *testing.T) {
 			panic("Ошибка преобразования полученного результата в JSON")
 		}
 
-		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 		assert.Equal(t, expected, get)
 	})
 }
@@ -276,7 +276,7 @@ func TestCreateLinkWithRandomName(t *testing.T) {
 			panic("Ошибка преобразования полученного результата в JSON")
 		}
 
-		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 		assert.Equal(t, expected, get)
 	})
 }
@@ -305,7 +305,7 @@ func TestGetLinksById(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 
 		createShortLink := db.ShortLink{}
 		err := json.Unmarshal(w.Body.Bytes(), &createShortLink)
@@ -325,7 +325,7 @@ func TestGetLinksById(t *testing.T) {
 			panic("Ошибка преобразования полученного результата в JSON")
 		}
 
-		assert.Equal(t, 200, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, get, expected)
 	})
 }
@@ -379,7 +379,7 @@ func TestRedirectShortLink(t *testing.T) {
 		req, _ = http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 
 		createdShortLink := db.ShortLink{}
 		err = json.Unmarshal(w.Body.Bytes(), &createdShortLink)
@@ -401,7 +401,7 @@ func TestRedirectShortLink(t *testing.T) {
 		req, _ = http.NewRequest("GET", "/api/link_visits", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 200, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 
 		var ContentRangeAfterNewVisit ContentRange
 
@@ -438,7 +438,7 @@ func TestUpdateLink(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 
 		createdShortLink := db.ShortLink{}
 		err := json.Unmarshal(w.Body.Bytes(), &createdShortLink)
@@ -457,7 +457,7 @@ func TestUpdateLink(t *testing.T) {
 		req, _ = http.NewRequest("PUT", "/api/links/"+strconv.Itoa(int(createdShortLink.ID)), strings.NewReader(string(updatedShortLinkJson)))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 200, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
 
@@ -478,7 +478,7 @@ func TestDeleteLink(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 201, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 
 		createdShortLink := db.ShortLink{}
 		err := json.Unmarshal(w.Body.Bytes(), &createdShortLink)
@@ -491,6 +491,7 @@ func TestDeleteLink(t *testing.T) {
 		req, _ = http.NewRequest("DELETE", "/api/links/"+strconv.Itoa(int(createdShortLink.ID)), nil)
 		router.ServeHTTP(w, req)
 
+		assert.Equal(t, http.StatusNoContent, w.Code)
 		assert.Equal(t, 204, w.Code)
 	})
 }

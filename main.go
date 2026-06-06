@@ -36,7 +36,7 @@ func setupRouter() *gin.Engine {
 
 func ping(router *gin.Engine) *gin.Engine {
 	router.GET("/ping", func(c *gin.Context) {
-		c.String(200, "pong")
+		c.String(http.StatusOK, "pong")
 	})
 
 	return router
@@ -52,18 +52,18 @@ func createLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		var req CreateLinkRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		shortLink, err := services.CreateShortLink(req.OriginalUrl, req.ShortName)
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(201, shortLink)
+		c.JSON(http.StatusCreated, shortLink)
 	})
 
 	return router
@@ -80,7 +80,6 @@ type Query struct {
 
 // https://gin-gonic.com/en/docs/binding/bind-custom-unmarshaler/#using-bindunmarshaler
 func (r *Range) UnmarshalParam(param string) error {
-	fmt.Println("начинаем парсить пагинацию")
 	var arr [2]int
 
 	if err := json.Unmarshal([]byte(param), &arr); err != nil {
@@ -93,7 +92,6 @@ func (r *Range) UnmarshalParam(param string) error {
 
 	r.Begin = arr[0]
 	r.End = arr[1]
-	fmt.Printf("закончили парсить пагинацию %v", r)
 
 	return nil
 }
@@ -115,20 +113,20 @@ func getShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin
 		)
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		countLinks, err := services.CountLinks()
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		c.Header("Content-Range", fmt.Sprintf(
 			"links %v-%v/%v", begin, end, countLinks))
-		c.JSON(200, shortLinks)
+		c.JSON(http.StatusOK, shortLinks)
 	})
 
 	return router
@@ -139,18 +137,18 @@ func getShortLinkById(router *gin.Engine, services *service.ShortLinksService) *
 		id, err := strconv.Atoi(c.Param("id"))
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": "ID должен быть числом"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID должен быть числом"})
 			return
 		}
 
 		shortLink, err := services.GetLinkById(int32(id))
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(200, shortLink)
+		c.JSON(http.StatusOK, shortLink)
 	})
 
 	return router
@@ -161,25 +159,25 @@ func updateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		id, err := strconv.Atoi(c.Param("id"))
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": "ID должен быть числом"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID должен быть числом"})
 			return
 		}
 
 		var req CreateLinkRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		err = services.UpdateShortLink(int32(id), req.OriginalUrl, req.ShortName)
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.Status(200)
+		c.Status(http.StatusOK)
 	})
 
 	return router
@@ -190,18 +188,18 @@ func deleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		id, err := strconv.Atoi(c.Param("id"))
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": "ID должен быть числом"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID должен быть числом"})
 			return
 		}
 
 		err = services.DeleteShortLink(int32(id))
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.Status(204)
+		c.Status(http.StatusNoContent)
 	})
 
 	return router
@@ -224,20 +222,20 @@ func getLinkVisits(router *gin.Engine, services *service.ShortLinksService) *gin
 		)
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		countLinks, err := services.CountLinkVisits()
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		c.Header("Content-Range", fmt.Sprintf(
 			"link_visits %v-%v/%v", begin, end, countLinks))
-		c.JSON(200, shortLinks)
+		c.JSON(http.StatusOK, shortLinks)
 	})
 
 	return router
