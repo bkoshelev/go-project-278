@@ -16,8 +16,17 @@ func NewShortLinksService(q *db.Queries, id_gen gen_id.IdGenerator) *ShortLinksS
 	return &ShortLinksService{q, id_gen}
 }
 
+type ServiceError struct {
+	FieldName string
+	Err       error
+}
+
+func (e ServiceError) Error() string {
+	return e.Err.Error()
+}
+
 var (
-	ErrDublicate = errors.New("короткая ссылка уже существует")
+	ErrDublicate = errors.New("short name already in use")
 	ErrShortName = errors.New("ошибка создания короткого имени. Попробуйте еще раз")
 	ErrDB        = errors.New("ошибка взаимодействия с базой данных")
 	ErrNoRows    = errors.New("короткая ссылка не найдена")

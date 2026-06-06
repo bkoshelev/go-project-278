@@ -16,6 +16,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
@@ -44,7 +45,7 @@ func ping(router *gin.Engine) *gin.Engine {
 
 type CreateLinkRequest struct {
 	OriginalUrl string `json:"original_url" binding:"required"`
-	ShortName   string `json:"short_name"`
+	ShortName   string `json:"short_name" binding:"omitempty,min=3,max=32"`
 }
 
 func createLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
@@ -52,14 +53,33 @@ func createLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		var req CreateLinkRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			var ve validator.ValidationErrors
+			if errors.As(err, &ve) {
+				out := make(map[string]string)
+				for _, fe := range ve {
+					out[fe.Field()] = fe.Error()
+				}
+				c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": out})
+				return
+			}
+
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 			return
 		}
 
 		shortLink, err := services.CreateShortLink(req.OriginalUrl, req.ShortName)
 
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err.Err != nil {
+			var ve service.ServiceError
+
+			if errors.As(err, &ve) {
+				out := make(map[string]string)
+				out[ve.FieldName] = ve.Err.Error()
+				c.JSON(http.StatusBadRequest, gin.H{"errors": out})
+				return
+			}
+
+			c.JSON(http.StatusBadRequest, gin.H{"error": "data base error"})
 			return
 		}
 
@@ -166,14 +186,31 @@ func updateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		var req CreateLinkRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			var ve validator.ValidationErrors
+			if errors.As(err, &ve) {
+				out := make(map[string]string)
+				for _, fe := range ve {
+					out[fe.Field()] = fe.Error()
+				}
+				c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": out})
+				return
+			}
+
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 			return
 		}
 
-		err = services.UpdateShortLink(int32(id), req.OriginalUrl, req.ShortName)
+		if services.UpdateShortLink(int32(id), req.OriginalUrl, req.ShortName).Err != nil {
+			var ve service.ServiceError
 
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			if errors.As(err, &ve) {
+				out := make(map[string]string)
+				out[ve.FieldName] = ve.Err.Error()
+				c.JSON(http.StatusBadRequest, gin.H{"errors": out})
+				return
+			}
+
+			c.JSON(http.StatusBadRequest, gin.H{"error": "data base error"})
 			return
 		}
 

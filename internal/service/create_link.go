@@ -10,13 +10,13 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.ShortLink, error) {
+func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.ShortLink, ServiceError) {
 
 	if shortName == "" {
 		customShortName, err := s.idGenerator.New()
 
 		if err != nil {
-			return db.ShortLink{}, ErrShortName
+			return db.ShortLink{}, ServiceError{"short_name", ErrShortName}
 		}
 
 		shortName = customShortName
@@ -33,11 +33,14 @@ func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.S
 
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return db.ShortLink{}, ErrDublicate
+				return db.ShortLink{}, ServiceError{"short_name", ErrDublicate}
 			}
+			if pgErr.ColumnName != "" {
+				return db.ShortLink{}, ServiceError{pgErr.ColumnName, err}
+			}
+			return db.ShortLink{}, ServiceError{"db", err}
 		}
-		return db.ShortLink{}, ErrDB
 	}
 
-	return shortLink, nil
+	return shortLink, ServiceError{}
 }

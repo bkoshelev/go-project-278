@@ -492,6 +492,68 @@ func TestDeleteLink(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
-		assert.Equal(t, 204, w.Code)
+	})
+}
+
+func TestValidationPayload(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+
+		newShortLink := CreateLinkRequest{
+			OriginalUrl: "google.com",
+			ShortName:   "ioVWrhP1sjJNVsEsmavSBxjcgeW9fDfw8",
+		}
+
+		shortLinkJson, _ := json.Marshal(newShortLink)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func TestValidationJSON(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string("{\"name\": \"Alex\", \"age\": 25")))
+		router.ServeHTTP(w, req)
+
+		log.Println(w.Body)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestValidationUniqShortName(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+
+		newShortLink := CreateLinkRequest{
+			OriginalUrl: "https://example.com",
+			ShortName:   "short",
+		}
+		shortLinkJson, _ := json.Marshal(newShortLink)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+		router.ServeHTTP(w, req)
+
+		fmt.Println("body --> ", w.Body)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
 	})
 }
