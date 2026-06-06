@@ -6,7 +6,7 @@ import (
 	"errors"
 	"os"
 
-	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/db"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 )

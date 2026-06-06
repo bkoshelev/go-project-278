@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/netip"
 
-	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/db"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 

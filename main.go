@@ -10,7 +10,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/db"
 	"github.com/bkoshelev/go-project-278/internal/gen_id"
 	"github.com/bkoshelev/go-project-278/internal/service"
 	"github.com/getsentry/sentry-go"

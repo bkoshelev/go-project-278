@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/db"
 )
 
 func (s *ShortLinksService) GetLinks(params db.GetShortLinksParams) ([]db.ShortLink, error) {

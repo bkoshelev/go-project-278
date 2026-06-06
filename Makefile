@@ -26,7 +26,7 @@ generate:
 	$(GOPATH)/bin/sqlc generate
 
 migrate:
-	$(GOPATH)/bin/goose --dir ./internal/db/migrations postgres $(DATABASE_URL) up
+	$(GOPATH)/bin/goose --dir ./db/migrations postgres $(DATABASE_URL) up
 
 # create new migration
-# $(GOPATH)/bin/goose -dir ./internal/db/migrations create [migration name] sql
+# $(GOPATH)/bin/goose -dir ./db/migrations create [migration name] sql

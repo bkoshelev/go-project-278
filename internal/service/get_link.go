@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/db"
 )
 
 func (s *ShortLinksService) GetLinkById(id int32) (db.ShortLink, error) {

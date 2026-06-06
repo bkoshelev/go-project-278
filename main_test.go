@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bkoshelev/go-project-278/internal/db"
+	"github.com/bkoshelev/go-project-278/db"
 	"github.com/bkoshelev/go-project-278/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"

@@ -49,7 +49,7 @@ COPY --from=frontend-builder \
   /app/public
 
 # Копируем миграции базы данных в runtime-образ
-COPY --from=backend-builder build/code/internal/db/migrations /app/db/migrations
+COPY --from=backend-builder build/code/db/migrations /app/db/migrations
 
 # Копируем бинарник goose из builder-этапа в финальный образ
 COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
