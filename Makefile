@@ -7,7 +7,7 @@ dev:
 dev\:all:
 	npx concurrently "make dev" "npx start-hexlet-url-shortener-frontend"
 build:
-	go build -o bin/shorturl ./main.go
+	go build -o bin/shorturl .
 
 tidy: ## Tidy up dependencies, format code, and run vet
 	go mod tidy
