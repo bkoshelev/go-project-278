@@ -16,6 +16,7 @@ import (
 	"github.com/bkoshelev/go-project-278/internal/service"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -180,6 +181,24 @@ func main() {
 	router = updateLink(router, services)
 	router = deleteLink(router, services)
 	router = unknownRoute(router)
+
+	router.Use(cors.New(
+		cors.Config{
+			AllowOrigins: []string{
+				"http://localhost:5173",
+			},
+			AllowMethods: []string{
+				"GET",
+				"POST",
+				"PUT",
+				"DELETE",
+			},
+			AllowHeaders: []string{
+				"Content-Type",
+				"Range",
+			},
+		},
+	))
 
 	err = router.Run(":8080")
 
