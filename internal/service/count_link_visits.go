@@ -4,13 +4,13 @@ import (
 	"context"
 )
 
-func (s *ShortLinksService) CountLinkVisits() (int64, error) {
+func (s *ShortLinksService) CountLinkVisits() (int64, ServiceError) {
 
 	count, err := s.q.CountLinkVisits(context.Background())
 
 	if err != nil {
-		return 0, ErrDB
+		return 0, ServiceError{"link_visits", ErrDB}
 	}
 
-	return count, nil
+	return count, ServiceError{}
 }

@@ -11,19 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func (s *ShortLinksService) UpdateShortLink(id int32, originalUrl, shortName string) ServiceError {
+func (s *ShortLinksService) UpdateShortLink(id int32, originalUrl, shortName string) (db.UpdateShortLinkRow, ServiceError) {
 
 	if shortName == "" {
 		customShortName, err := s.idGenerator.New()
 
 		if err != nil {
-			return ServiceError{"short_name", ErrShortName}
+			return db.UpdateShortLinkRow{}, ServiceError{"short_name", ErrShortName}
 
 		}
 		shortName = customShortName
 	}
 
-	_, err := s.q.UpdateShortLink(context.Background(), db.UpdateShortLinkParams{
+	updatedShortLink, err := s.q.UpdateShortLink(context.Background(), db.UpdateShortLinkParams{
 		ID:          id,
 		OriginalUrl: originalUrl,
 		ShortName:   shortName,
@@ -32,7 +32,7 @@ func (s *ShortLinksService) UpdateShortLink(id int32, originalUrl, shortName str
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ServiceError{"id", ErrNoRows}
+			return db.UpdateShortLinkRow{}, ServiceError{"id", ErrNoRows}
 
 		}
 
@@ -40,14 +40,14 @@ func (s *ShortLinksService) UpdateShortLink(id int32, originalUrl, shortName str
 
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return ServiceError{"short_name", ErrDublicate}
+				return db.UpdateShortLinkRow{}, ServiceError{"short_name", ErrDublicate}
 			}
 			if pgErr.ColumnName != "" {
-				return ServiceError{pgErr.ColumnName, err}
+				return db.UpdateShortLinkRow{}, ServiceError{pgErr.ColumnName, err}
 			}
 		}
-		return ServiceError{"db", err}
+		return db.UpdateShortLinkRow{}, ServiceError{"db", err}
 
 	}
-	return ServiceError{}
+	return updatedShortLink, ServiceError{}
 }

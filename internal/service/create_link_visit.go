@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (s *ShortLinksService) CreateLinkVisit(ip string, linkId int32, userAgent string, referer string, status int32) (db.CreateLinkVisitRow, error) {
+func (s *ShortLinksService) CreateLinkVisit(ip string, linkId int32, userAgent, referer string, status int32) (db.CreateLinkVisitRow, ServiceError) {
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		return db.CreateLinkVisitRow{}, ErrDB
+		return db.CreateLinkVisitRow{}, ServiceError{"ip", ErrDB}
 	}
 
 	linkVisit, err := s.q.CreateLinkVisit(context.Background(), db.CreateLinkVisitParams{
@@ -22,8 +22,8 @@ func (s *ShortLinksService) CreateLinkVisit(ip string, linkId int32, userAgent s
 		Status:    status,
 	})
 	if err != nil {
-		return db.CreateLinkVisitRow{}, err
+		return db.CreateLinkVisitRow{}, ServiceError{"link_visits", err}
 	}
 
-	return linkVisit, nil
+	return linkVisit, ServiceError{}
 }

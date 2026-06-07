@@ -57,11 +57,11 @@ SET
     short_name = sqlc.arg (short_name),
     short_url = sqlc.arg (short_url)
 WHERE
-    id = sqlc.arg (id) RETURNING id,
+    id = sqlc.arg (id)
+RETURNING id,
     original_url,
     short_name,
-    short_url,
-    created_at;
+    short_url;
 
 -- name: DeleteShortLink :one
 DELETE FROM short_links

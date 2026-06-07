@@ -314,11 +314,11 @@ SET
     short_name = $2,
     short_url = $3
 WHERE
-    id = $4 RETURNING id,
+    id = $4
+RETURNING id,
     original_url,
     short_name,
-    short_url,
-    created_at
+    short_url
 `
 
 type UpdateShortLinkParams struct {
@@ -328,20 +328,26 @@ type UpdateShortLinkParams struct {
 	ID          int32  `json:"id"`
 }
 
-func (q *Queries) UpdateShortLink(ctx context.Context, arg UpdateShortLinkParams) (ShortLink, error) {
+type UpdateShortLinkRow struct {
+	ID          int32  `json:"id"`
+	OriginalUrl string `json:"original_url"`
+	ShortName   string `json:"short_name"`
+	ShortUrl    string `json:"short_url"`
+}
+
+func (q *Queries) UpdateShortLink(ctx context.Context, arg UpdateShortLinkParams) (UpdateShortLinkRow, error) {
 	row := q.db.QueryRow(ctx, updateShortLink,
 		arg.OriginalUrl,
 		arg.ShortName,
 		arg.ShortUrl,
 		arg.ID,
 	)
-	var i ShortLink
+	var i UpdateShortLinkRow
 	err := row.Scan(
 		&i.ID,
 		&i.OriginalUrl,
 		&i.ShortName,
 		&i.ShortUrl,
-		&i.CreatedAt,
 	)
 	return i, err
 }

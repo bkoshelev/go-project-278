@@ -67,6 +67,8 @@ func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 	ctx := context.Background()
 
+	setupValidation()
+
 	if os.Getenv("DATABASE_URL") == "" {
 		_ = godotenv.Load(".env.test")
 	}
@@ -116,7 +118,7 @@ func TestGetLinks(t *testing.T) {
 		router = createLink(router, services)
 		router = getShortLinks(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -127,8 +129,11 @@ func TestGetLinks(t *testing.T) {
 			ShortUrl:    os.Getenv("HOST") + "/r/" + "short",
 		}
 
-		shortLinkJson, _ := json.Marshal(newShortLink)
+		shortLinkJson, err := json.Marshal(newShortLink)
 
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 		router.ServeHTTP(w, req)
@@ -141,7 +146,7 @@ func TestGetLinks(t *testing.T) {
 
 		get := []TestShortLink{}
 
-		err := json.Unmarshal(w.Body.Bytes(), &get)
+		err = json.Unmarshal(w.Body.Bytes(), &get)
 
 		if err != nil {
 			panic("Ошибка преобразования полученного результата в JSON")
@@ -169,19 +174,22 @@ func TestGetLinksWithPagination(t *testing.T) {
 			})
 		}
 		for _, shortLink := range initial {
-			newShortLink := CreateLinkRequest{
+			newShortLink := CreateLinkPayload{
 				OriginalUrl: shortLink.OriginalUrl,
 				ShortName:   shortLink.ShortName,
 			}
 
-			shortLinkJson, _ := json.Marshal(newShortLink)
+			shortLinkJson, err := json.Marshal(newShortLink)
+
+			if err != nil {
+				panic("Ошибка преобразования полученного результата в JSON")
+			}
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, http.StatusCreated, w.Code)
-
 		}
 
 		w := httptest.NewRecorder()
@@ -200,7 +208,7 @@ func TestGetLinksWithPagination(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Result().Header["Content-Range"], "links 0-4/10")
 		assert.Equal(t, 5, len(get))
-		assert.Equal(t, get, expected)
+		assert.Equal(t, expected, get)
 	})
 }
 
@@ -216,7 +224,7 @@ func TestCreateLink(t *testing.T) {
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
 		router = createLink(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -252,7 +260,7 @@ func TestCreateLinkWithRandomName(t *testing.T) {
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
 		router = createLink(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 		}
 
@@ -288,7 +296,7 @@ func TestGetLinksById(t *testing.T) {
 		router = createLink(router, services)
 		router = getShortLinkById(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -334,11 +342,6 @@ func TestRedirectShortLink(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, tx pgx.Tx) {
-		// err = router.SetTrustedProxies([]string{"127.0.0.1"})
-
-		// if err != nil {
-		// 	panic("Ошибка парсинга Content Range")
-		// }
 
 		router = createLink(router, services)
 		router = redirectShortLink(router, services)
@@ -368,7 +371,7 @@ func TestRedirectShortLink(t *testing.T) {
 			panic("Ошибка парсинга Content Range")
 		}
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -427,7 +430,7 @@ func TestUpdateLink(t *testing.T) {
 		router = createLink(router, services)
 		router = updateLink(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -447,17 +450,29 @@ func TestUpdateLink(t *testing.T) {
 			panic("Ошибка преобразования полученного результата в JSON")
 		}
 
-		updatedShortLink := CreateLinkRequest{
+		updateShortLinkPayload := CreateLinkPayload{
 			OriginalUrl: "https://example2.com",
 			ShortName:   "short2",
 		}
-		updatedShortLinkJson, _ := json.Marshal(updatedShortLink)
+		updatedShortLinkJson, _ := json.Marshal(updateShortLinkPayload)
 
 		w = httptest.NewRecorder()
 		req, _ = http.NewRequest("PUT", "/api/links/"+strconv.Itoa(int(createdShortLink.ID)), strings.NewReader(string(updatedShortLinkJson)))
 		router.ServeHTTP(w, req)
 
+		updatedShortLink := db.UpdateShortLinkRow{}
+		err = json.Unmarshal(w.Body.Bytes(), &updatedShortLink)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+
 		assert.Equal(t, http.StatusOK, w.Code)
+
+		expected := db.UpdateShortLinkRow{ID: createdShortLink.ID, OriginalUrl: updatedShortLink.OriginalUrl,
+			ShortName: updatedShortLink.ShortName}
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.ObjectsAreEqual(expected, updatedShortLink)
 	})
 }
 
@@ -468,7 +483,7 @@ func TestDeleteLink(t *testing.T) {
 		router = createLink(router, services)
 		router = deleteLink(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -501,7 +516,7 @@ func TestValidationPayload(t *testing.T) {
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
 		router = createLink(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "google.com",
 			ShortName:   "ioVWrhP1sjJNVsEsmavSBxjcgeW9fDfw8",
 		}
@@ -513,6 +528,15 @@ func TestValidationPayload(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+
+		received := map[string]any{}
+		err := json.Unmarshal(w.Body.Bytes(), &received)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+
+		assert.Contains(t, received, "errors")
 	})
 }
 
@@ -537,7 +561,7 @@ func TestValidationUniqShortName(t *testing.T) {
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
 		router = createLink(router, services)
 
-		newShortLink := CreateLinkRequest{
+		newShortLink := CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -552,8 +576,89 @@ func TestValidationUniqShortName(t *testing.T) {
 		req, _ = http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
 		router.ServeHTTP(w, req)
 
-		fmt.Println("body --> ", w.Body)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
+	})
+}
+
+func TestGetLinkInvalidUri(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+		router = getShortLinkById(router, services)
+
+		newShortLink := CreateLinkPayload{
+			OriginalUrl: "https://example.com",
+			ShortName:   "short",
+		}
+
+		shortLinkJson, _ := json.Marshal(newShortLink)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		createShortLink := db.ShortLink{}
+		err := json.Unmarshal(w.Body.Bytes(), &createShortLink)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("GET", "/api/links/:id", nil)
+		router.ServeHTTP(w, req)
+
+		get := TestShortLink{}
+		err = json.Unmarshal(w.Body.Bytes(), &get)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
+
+func TestGetLinkInvalidId(t *testing.T) {
+	router := setupRouter()
+
+	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
+		router = createLink(router, services)
+		router = getShortLinkById(router, services)
+
+		newShortLink := CreateLinkPayload{
+			OriginalUrl: "https://example.com",
+			ShortName:   "short",
+		}
+
+		shortLinkJson, _ := json.Marshal(newShortLink)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string(shortLinkJson)))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		createShortLink := db.ShortLink{}
+		err := json.Unmarshal(w.Body.Bytes(), &createShortLink)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("GET", "/api/links/999999", nil)
+		router.ServeHTTP(w, req)
+
+		get := TestShortLink{}
+		err = json.Unmarshal(w.Body.Bytes(), &get)
+
+		if err != nil {
+			panic("Ошибка преобразования полученного результата в JSON")
+		}
+		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 }

@@ -6,16 +6,16 @@ import (
 	"errors"
 )
 
-func (s *ShortLinksService) DeleteShortLink(id int32) error {
+func (s *ShortLinksService) DeleteShortLink(id int32) ServiceError {
 
 	_, err := s.q.DeleteShortLink(context.Background(), id)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNoRows
+			return ServiceError{"id", ErrNoRows}
 		}
 
-		return ErrDB
+		return ServiceError{"db", ErrDB}
 	}
-	return nil
+	return ServiceError{}
 }

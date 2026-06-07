@@ -8,7 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
+	"reflect"
+	"strings"
 
 	"github.com/bkoshelev/go-project-278/db"
 	"github.com/bkoshelev/go-project-278/internal/gen_id"
@@ -16,6 +17,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -35,58 +37,74 @@ func setupRouter() *gin.Engine {
 	return router
 }
 
-func ping(router *gin.Engine) *gin.Engine {
-	router.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pong")
-	})
-
-	return router
+func setupValidation() {
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+			return name
+		})
+	}
 }
 
-type CreateLinkRequest struct {
+type CreateLinkPayload struct {
 	OriginalUrl string `json:"original_url" binding:"required"`
 	ShortName   string `json:"short_name" binding:"omitempty,min=3,max=32"`
 }
 
-func createLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
-	router.POST("/api/links", func(c *gin.Context) {
-		var req CreateLinkRequest
+type GetEntityUriParams struct {
+	ID int `uri:"id" binding:"required"`
+}
 
-		if err := c.ShouldBindJSON(&req); err != nil {
-			var ve validator.ValidationErrors
-			if errors.As(err, &ve) {
-				out := make(map[string]string)
-				for _, fe := range ve {
-					out[fe.Field()] = fe.Error()
-				}
-				c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": out})
-				return
+type RedirectUriParams struct {
+	ShortName string `uri:"code" binding:"required"`
+}
+
+func bindUri(c *gin.Context, parameters any) error {
+	if err := c.ShouldBindUri(parameters); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return err
+	}
+	return nil
+}
+
+func bindPayload(c *gin.Context, payload any) error {
+	err := c.ShouldBindJSON(&payload)
+
+	if err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			out := make(map[string]string)
+			for _, fe := range ve {
+				out[fe.Field()] = fe.Error()
 			}
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": out})
+			return err
+		}
 
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return err
+	}
+	return nil
+}
+
+func handleServiceError(c *gin.Context, err service.ServiceError) {
+	if err.Err != nil {
+		var ve service.ServiceError
+
+		if errors.Is(err.Err, service.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 
-		shortLink, err := services.CreateShortLink(req.OriginalUrl, req.ShortName)
-
-		if err.Err != nil {
-			var ve service.ServiceError
-
-			if errors.As(err, &ve) {
-				out := make(map[string]string)
-				out[ve.FieldName] = ve.Err.Error()
-				c.JSON(http.StatusBadRequest, gin.H{"errors": out})
-				return
-			}
-
-			c.JSON(http.StatusBadRequest, gin.H{"error": "data base error"})
+		if errors.As(err.Err, &ve) {
+			out := make(map[string]string)
+			out[ve.FieldName] = ve.Err.Error()
+			c.JSON(http.StatusBadRequest, gin.H{"errors": out})
 			return
 		}
 
-		c.JSON(http.StatusCreated, shortLink)
-	})
-
-	return router
+		c.JSON(http.StatusBadRequest, gin.H{"error": "data base error"})
+	}
 }
 
 type Range struct {
@@ -94,8 +112,8 @@ type Range struct {
 	End   int
 }
 
-type Query struct {
-	Range Range `form:"range"`
+type GetMulitpleEntityQueryParams struct {
+	Range Range `form:"range" binding:"required"`
 }
 
 // https://gin-gonic.com/en/docs/binding/bind-custom-unmarshaler/#using-bindunmarshaler
@@ -116,31 +134,67 @@ func (r *Range) UnmarshalParam(param string) error {
 	return nil
 }
 
+func bindQuery(c *gin.Context, obj any) error {
+	err := c.BindQuery(obj)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return err
+	}
+	return nil
+}
+
+func ping(router *gin.Engine) *gin.Engine {
+	router.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
+	})
+
+	return router
+}
+
+func createLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
+	router.POST("/api/links", func(c *gin.Context) {
+		var req CreateLinkPayload
+		if err := bindPayload(c, &req); err != nil {
+			return
+		}
+
+		shortLink, err := services.CreateShortLink(req.OriginalUrl, req.ShortName)
+		if err.Err != nil {
+			handleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusCreated, shortLink)
+	})
+
+	return router
+}
+
 func getShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.GET("/api/links", func(c *gin.Context) {
-		query := Query{Range: Range{Begin: 0, End: 10}}
-		if c.Query("range") != "" {
-			_ = c.BindQuery(&query)
+		query := GetMulitpleEntityQueryParams{Range: Range{Begin: 0, End: 10}}
+
+		if err := bindQuery(c, &query); err != nil {
+			return
 		}
 		begin := query.Range.Begin
 		end := query.Range.End
 
-		shortLinks, err := services.GetLinks(
+		shortLinks, err2 := services.GetLinks(
 			db.GetShortLinksParams{
 				Limit:  end - begin + 1,
 				Offset: int32(begin),
 			},
 		)
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err2.Err != nil {
+			handleServiceError(c, err2)
 			return
 		}
 
-		countLinks, err := services.CountLinks()
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		countLinks, err2 := services.CountLinks()
+		if err2.Err != nil {
+			handleServiceError(c, err2)
 			return
 		}
 
@@ -154,17 +208,15 @@ func getShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin
 
 func getShortLinkById(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.GET("/api/links/:id", func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID должен быть числом"})
+		params := GetEntityUriParams{}
+		if err := bindUri(c, &params); err != nil {
 			return
 		}
 
-		shortLink, err := services.GetLinkById(int32(id))
+		shortLink, err := services.GetLinkById(int32(params.ID))
 
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err.Err != nil {
+			handleServiceError(c, err)
 			return
 		}
 
@@ -176,45 +228,31 @@ func getShortLinkById(router *gin.Engine, services *service.ShortLinksService) *
 
 func updateLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.PUT("/api/links/:id", func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID должен быть числом"})
+		params := GetEntityUriParams{}
+		if err := bindUri(c, &params); err != nil {
 			return
 		}
 
-		var req CreateLinkRequest
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			var ve validator.ValidationErrors
-			if errors.As(err, &ve) {
-				out := make(map[string]string)
-				for _, fe := range ve {
-					out[fe.Field()] = fe.Error()
-				}
-				c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": out})
-				return
-			}
-
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		var req CreateLinkPayload
+		if err := bindPayload(c, &req); err != nil {
 			return
 		}
 
-		if services.UpdateShortLink(int32(id), req.OriginalUrl, req.ShortName).Err != nil {
-			var ve service.ServiceError
+		fmt.Println("UPDATE LINK", params.ID, req.OriginalUrl, req.ShortName)
+		log.Println("UPDATE LINK", params.ID, req.OriginalUrl, req.ShortName)
 
-			if errors.As(err, &ve) {
-				out := make(map[string]string)
-				out[ve.FieldName] = ve.Err.Error()
-				c.JSON(http.StatusBadRequest, gin.H{"errors": out})
-				return
-			}
+		updatedShortLink, err := services.UpdateShortLink(
+			int32(params.ID),
+			req.OriginalUrl,
+			req.ShortName,
+		)
 
-			c.JSON(http.StatusBadRequest, gin.H{"error": "data base error"})
+		if err.Err != nil {
+			handleServiceError(c, err)
 			return
 		}
 
-		c.Status(http.StatusOK)
+		c.JSON(http.StatusOK, updatedShortLink)
 	})
 
 	return router
@@ -222,17 +260,15 @@ func updateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 
 func deleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.DELETE("/api/links/:id", func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID должен быть числом"})
+		params := GetEntityUriParams{}
+		if err := bindUri(c, &params); err != nil {
 			return
 		}
 
-		err = services.DeleteShortLink(int32(id))
+		err := services.DeleteShortLink(int32(params.ID))
 
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err.Err != nil {
+			handleServiceError(c, err)
 			return
 		}
 
@@ -244,29 +280,30 @@ func deleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 
 func getLinkVisits(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.GET("/api/link_visits", func(c *gin.Context) {
-		query := Query{Range: Range{Begin: 0, End: 10}}
-		if c.Query("range") != "" {
-			_ = c.BindQuery(&query)
+		query := GetMulitpleEntityQueryParams{Range: Range{Begin: 0, End: 10}}
+
+		if err := bindQuery(c, &query); err != nil {
+			return
 		}
 		begin := query.Range.Begin
 		end := query.Range.End
 
-		shortLinks, err := services.GetLinkVisits(
+		shortLinks, err2 := services.GetLinkVisits(
 			db.GetLinkVisitsParams{
 				Limit:  end - begin + 1,
 				Offset: int32(begin),
 			},
 		)
 
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err2.Err != nil {
+			handleServiceError(c, err2)
 			return
 		}
 
-		countLinks, err := services.CountLinkVisits()
+		countLinks, err2 := services.CountLinkVisits()
 
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err2.Err != nil {
+			handleServiceError(c, err2)
 			return
 		}
 
@@ -280,15 +317,15 @@ func getLinkVisits(router *gin.Engine, services *service.ShortLinksService) *gin
 
 func redirectShortLink(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.GET("/r/:code", func(c *gin.Context) {
-		shortLink, err := services.GetLinkByShortName(c.Param("code"))
+		params := RedirectUriParams{}
+		if err := bindUri(c, &params); err != nil {
+			return
+		}
 
-		if err != nil {
-			if errors.Is(err, service.ErrNoRows) {
-				c.JSON(http.StatusNotFound, gin.H{"error": service.ErrNoRows.Error()})
-				return
-			}
+		shortLink, err := services.GetLinkByShortName(params.ShortName)
 
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err.Err != nil {
+			handleServiceError(c, err)
 			return
 		}
 
@@ -300,8 +337,8 @@ func redirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 			http.StatusFound,
 		)
 
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err.Err != nil {
+			handleServiceError(c, err)
 			return
 		}
 
@@ -332,6 +369,8 @@ func main() {
 		fmt.Printf("Sentry initialization failed: %v\n", err)
 	}
 
+	setupValidation()
+
 	conn, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 
 	if err != nil {
@@ -339,15 +378,11 @@ func main() {
 	}
 	defer conn.Close()
 
-	runApp(conn)
-}
+	queries := db.New(conn)
 
-func runApp(dbConn *pgxpool.Pool) {
-	queries := db.New(dbConn)
-
+	services := service.NewShortLinksService(queries, gen_id.CreateIdGenerator())
 	router := setupRouter()
 	router = ping(router)
-	services := service.NewShortLinksService(queries, gen_id.CreateIdGenerator())
 	router = getShortLinks(router, services)
 	router = getLinkVisits(router, services)
 	router = createLink(router, services)
@@ -357,7 +392,7 @@ func runApp(dbConn *pgxpool.Pool) {
 	router = deleteLink(router, services)
 	router = unknownRoute(router)
 
-	err := router.Run(":8080")
+	err = router.Run(":8080")
 
 	if err != nil {
 		log.Fatal("Ошибка запуска сервера:", err)
