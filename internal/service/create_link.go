@@ -1,16 +1,17 @@
 package service
 
 import (
-	"context"
 	"errors"
-	"os"
+	"fmt"
 
 	"github.com/bkoshelev/go-project-278/db"
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.ShortLink, ServiceError) {
+func (s *ShortLinksService) CreateShortLink(c *gin.Context, originalUrl, shortName string) (db.ShortLink, error) {
+	ctx := c.Request.Context()
 
 	if shortName == "" {
 		customShortName, err := s.idGenerator.New()
@@ -22,10 +23,10 @@ func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.S
 		shortName = customShortName
 	}
 
-	shortLink, err := s.q.CreateShortLink(context.Background(), db.CreateShortLinkParams{
+	shortLink, err := s.q.CreateShortLink(ctx, db.CreateShortLinkParams{
 		OriginalUrl: originalUrl,
 		ShortName:   shortName,
-		ShortUrl:    os.Getenv("HOST") + "/r/" + shortName,
+		ShortUrl:    s.host + "/r/" + shortName,
 	})
 
 	if err != nil {
@@ -33,14 +34,14 @@ func (s *ShortLinksService) CreateShortLink(originalUrl, shortName string) (db.S
 
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return db.ShortLink{}, ServiceError{"short_name", ErrDublicate}
+				return db.ShortLink{}, ServiceError{"short_name", ErrDuplicate}
 			}
 			if pgErr.ColumnName != "" {
 				return db.ShortLink{}, ServiceError{pgErr.ColumnName, err}
 			}
-			return db.ShortLink{}, ServiceError{"db", err}
+			return db.ShortLink{}, fmt.Errorf("%v %v", ErrDB, err)
 		}
 	}
 
-	return shortLink, ServiceError{}
+	return shortLink, nil
 }

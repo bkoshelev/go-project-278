@@ -10,10 +10,11 @@ import (
 type ShortLinksService struct {
 	q           *db.Queries
 	idGenerator gen_id.IdGenerator
+	host        string
 }
 
-func NewShortLinksService(q *db.Queries, id_gen gen_id.IdGenerator) *ShortLinksService {
-	return &ShortLinksService{q, id_gen}
+func NewShortLinksService(q *db.Queries, id_gen gen_id.IdGenerator, host string) *ShortLinksService {
+	return &ShortLinksService{q, id_gen, host}
 }
 
 type ServiceError struct {
@@ -26,8 +27,9 @@ func (e ServiceError) Error() string {
 }
 
 var (
-	ErrDublicate = errors.New("short name already in use")
+	ErrDuplicate = errors.New("short name already in use")
 	ErrShortName = errors.New("ошибка создания короткого имени. Попробуйте еще раз")
-	ErrDB        = errors.New("ошибка взаимодействия с базой данных")
+	ErrDB        = errors.New("неизвестная ошибка взаимодействия с базой данных")
 	ErrNoRows    = errors.New("короткая ссылка не найдена")
+	ErrIp        = errors.New("ошибка обработки ip адреса")
 )

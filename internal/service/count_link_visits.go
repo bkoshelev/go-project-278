@@ -1,16 +1,19 @@
 package service
 
 import (
-	"context"
+	"fmt"
+
+	"github.com/gin-gonic/gin"
 )
 
-func (s *ShortLinksService) CountLinkVisits() (int64, ServiceError) {
+func (s *ShortLinksService) CountLinkVisits(c *gin.Context) (int64, error) {
+	ctx := c.Request.Context()
 
-	count, err := s.q.CountLinkVisits(context.Background())
+	count, err := s.q.CountLinkVisits(ctx)
 
 	if err != nil {
-		return 0, ServiceError{"link_visits", ErrDB}
+		return 0, fmt.Errorf("%v %v", ErrDB, err)
 	}
 
-	return count, ServiceError{}
+	return count, nil
 }

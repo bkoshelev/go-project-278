@@ -1,20 +1,23 @@
 package service
 
 import (
-	"context"
+	"fmt"
 	"net/netip"
 
 	"github.com/bkoshelev/go-project-278/db"
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (s *ShortLinksService) CreateLinkVisit(ip string, linkId int32, userAgent, referer string, status int32) (db.CreateLinkVisitRow, ServiceError) {
+func (s *ShortLinksService) CreateLinkVisit(c *gin.Context, ip string, linkId int32, userAgent, referer string, status int32) (db.CreateLinkVisitRow, error) {
+	ctx := c.Request.Context()
+
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		return db.CreateLinkVisitRow{}, ServiceError{"ip", ErrDB}
+		return db.CreateLinkVisitRow{}, ServiceError{"ip", fmt.Errorf("%v %v", ErrIp, err)}
 	}
 
-	linkVisit, err := s.q.CreateLinkVisit(context.Background(), db.CreateLinkVisitParams{
+	linkVisit, err := s.q.CreateLinkVisit(ctx, db.CreateLinkVisitParams{
 		Ip:        addr,
 		LinkID:    pgtype.Int4{Int32: linkId, Valid: true},
 		UserAgent: userAgent,
@@ -22,8 +25,8 @@ func (s *ShortLinksService) CreateLinkVisit(ip string, linkId int32, userAgent, 
 		Status:    status,
 	})
 	if err != nil {
-		return db.CreateLinkVisitRow{}, ServiceError{"link_visits", err}
+		return db.CreateLinkVisitRow{}, fmt.Errorf("%v %v", ErrDB, err)
 	}
 
-	return linkVisit, ServiceError{}
+	return linkVisit, nil
 }

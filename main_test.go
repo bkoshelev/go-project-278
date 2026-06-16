@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bkoshelev/go-project-278/db"
+	"github.com/bkoshelev/go-project-278/internal/api"
 	"github.com/bkoshelev/go-project-278/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -56,7 +57,7 @@ func withTx(t *testing.T, fn func(ctx context.Context, services *service.ShortLi
 
 	qtx := db.New(tx)
 	qtx = qtx.WithTx(tx)
-	services := service.NewShortLinksService(qtx, new(MockIdGenerator))
+	services := service.NewShortLinksService(qtx, new(MockIdGenerator), os.Getenv("HOST"))
 	log.Print("Стартуем тест")
 	fn(ctx, services, tx)
 }
@@ -89,8 +90,7 @@ func TestMain(m *testing.M) {
 	}
 	cancel()
 
-	// _, err = conn.Exec(ctx, "TRUNCATE link_visits, short_links RESTART IDENTITY")
-	_, err = conn.Exec(ctx, "TRUNCATE short_links RESTART IDENTITY")
+	_, err = conn.Exec(ctx, "TRUNCATE link_visits, short_links RESTART IDENTITY")
 
 	if err != nil {
 		log.Fatalf("fail to prepare short_links table")
@@ -101,7 +101,7 @@ func TestMain(m *testing.M) {
 
 func TestPingRoute(t *testing.T) {
 	router := setupRouter()
-	router = ping(router)
+	router = api.Ping(router)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/ping", nil)
@@ -115,10 +115,10 @@ func TestGetLinks(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
-		router = getShortLinks(router, services)
+		router = api.CreateLink(router, services)
+		router = api.GetShortLinks(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -161,8 +161,8 @@ func TestGetLinksWithPagination(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
-		router = getShortLinks(router, services)
+		router = api.CreateLink(router, services)
+		router = api.GetShortLinks(router, services)
 
 		var initial []TestShortLink
 
@@ -174,7 +174,7 @@ func TestGetLinksWithPagination(t *testing.T) {
 			})
 		}
 		for _, shortLink := range initial {
-			newShortLink := CreateLinkPayload{
+			newShortLink := api.CreateLinkPayload{
 				OriginalUrl: shortLink.OriginalUrl,
 				ShortName:   shortLink.ShortName,
 			}
@@ -222,9 +222,9 @@ func TestCreateLink(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
+		router = api.CreateLink(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -258,9 +258,9 @@ func TestCreateLinkWithRandomName(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
+		router = api.CreateLink(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 		}
 
@@ -293,10 +293,10 @@ func TestGetLinksById(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
-		router = getShortLinkById(router, services)
+		router = api.CreateLink(router, services)
+		router = api.GetShortLinkById(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -343,9 +343,9 @@ func TestRedirectShortLink(t *testing.T) {
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, tx pgx.Tx) {
 
-		router = createLink(router, services)
-		router = redirectShortLink(router, services)
-		router = getLinkVisits(router, services)
+		router = api.CreateLink(router, services)
+		router = api.RedirectShortLink(router, services)
+		router = api.GetLinkVisits(router, services)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/link_visits", nil)
@@ -371,7 +371,7 @@ func TestRedirectShortLink(t *testing.T) {
 			panic("Ошибка парсинга Content Range")
 		}
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -427,10 +427,10 @@ func TestUpdateLink(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
-		router = updateLink(router, services)
+		router = api.CreateLink(router, services)
+		router = api.UpdateLink(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -450,7 +450,7 @@ func TestUpdateLink(t *testing.T) {
 			panic("Ошибка преобразования полученного результата в JSON")
 		}
 
-		updateShortLinkPayload := CreateLinkPayload{
+		updateShortLinkPayload := api.CreateLinkPayload{
 			OriginalUrl: "https://example2.com",
 			ShortName:   "short2",
 		}
@@ -480,10 +480,10 @@ func TestDeleteLink(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
-		router = deleteLink(router, services)
+		router = api.CreateLink(router, services)
+		router = api.DeleteLink(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -514,9 +514,9 @@ func TestValidationPayload(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
+		router = api.CreateLink(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "google.com",
 			ShortName:   "ioVWrhP1sjJNVsEsmavSBxjcgeW9fDfw8",
 		}
@@ -544,7 +544,7 @@ func TestValidationJSON(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
+		router = api.CreateLink(router, services)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/links", strings.NewReader(string("{\"name\": \"Alex\", \"age\": 25")))
@@ -559,9 +559,9 @@ func TestValidationUniqShortName(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
+		router = api.CreateLink(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -585,10 +585,10 @@ func TestGetLinkInvalidUri(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
-		router = getShortLinkById(router, services)
+		router = api.CreateLink(router, services)
+		router = api.GetShortLinkById(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}
@@ -626,10 +626,10 @@ func TestGetLinkInvalidId(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
-		router = createLink(router, services)
-		router = getShortLinkById(router, services)
+		router = api.CreateLink(router, services)
+		router = api.GetShortLinkById(router, services)
 
-		newShortLink := CreateLinkPayload{
+		newShortLink := api.CreateLinkPayload{
 			OriginalUrl: "https://example.com",
 			ShortName:   "short",
 		}

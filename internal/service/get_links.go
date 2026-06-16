@@ -1,18 +1,20 @@
 package service
 
 import (
-	"context"
+	"fmt"
 
 	"github.com/bkoshelev/go-project-278/db"
+	"github.com/gin-gonic/gin"
 )
 
-func (s *ShortLinksService) GetLinks(params db.GetShortLinksParams) ([]db.ShortLink, ServiceError) {
+func (s *ShortLinksService) GetLinks(c *gin.Context, params db.GetShortLinksParams) ([]db.ShortLink, error) {
+	ctx := c.Request.Context()
 
-	shortLinks, err := s.q.GetShortLinks(context.Background(), params)
+	shortLinks, err := s.q.GetShortLinks(ctx, params)
 
 	if err != nil {
-		return nil, ServiceError{"db", ErrDB}
+		return nil, fmt.Errorf("%v %v", ErrDB, err)
 	}
 
-	return shortLinks, ServiceError{}
+	return shortLinks, nil
 }
