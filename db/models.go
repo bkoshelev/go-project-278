@@ -11,7 +11,7 @@ import (
 )
 
 type LinkVisit struct {
-	Ip        netip.Addr         `json:"ip"`
+	IP        netip.Addr         `json:"ip"`
 	UserAgent string             `json:"user_agent"`
 	Referer   string             `json:"referer"`
 	Status    int32              `json:"status"`
@@ -22,8 +22,8 @@ type LinkVisit struct {
 
 type ShortLink struct {
 	ID          int32              `json:"id"`
-	OriginalUrl string             `json:"original_url"`
+	OriginalURL string             `json:"original_url"`
 	ShortName   string             `json:"short_name"`
-	ShortUrl    string             `json:"short_url"`
+	ShortURL    string             `json:"short_url"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }

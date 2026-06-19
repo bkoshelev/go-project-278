@@ -12,7 +12,7 @@ VALUES
     short_url,
     created_at;
 
--- name: GetShortLinkById :one
+-- name: GetShortLinkByID :one
 SELECT
     id,
     original_url,

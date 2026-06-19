@@ -32,7 +32,7 @@ func CreateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 			return
 		}
 
-		shortLink, err := services.CreateShortLink(c, req.OriginalUrl, req.ShortName)
+		shortLink, err := services.CreateShortLink(c, req.OriginalURL, req.ShortName)
 
 		if err != nil {
 			var se service.ServiceError
@@ -86,7 +86,7 @@ func GetShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin
 	return router
 }
 
-func GetShortLinkById(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
+func GetShortLinkByID(router *gin.Engine, services *service.ShortLinksService) *gin.Engine {
 	router.GET("/api/links/:id", func(c *gin.Context) {
 		params := GetEntityUriParams{}
 		if err := c.ShouldBindUri(&params); err != nil {
@@ -138,7 +138,7 @@ func UpdateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		updatedShortLink, err := services.UpdateShortLink(
 			c,
 			int32(params.ID),
-			req.OriginalUrl,
+			req.OriginalURL,
 			req.ShortName,
 		)
 
@@ -276,7 +276,7 @@ func RedirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.Redirect(http.StatusFound, shortLink.OriginalUrl)
+		c.Redirect(http.StatusFound, shortLink.OriginalURL)
 	})
 
 	return router

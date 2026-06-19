@@ -2,16 +2,16 @@ package gen_id
 
 import gonanoid "github.com/matoous/go-nanoid/v2"
 
-type IdGenerator interface {
+type IDGenerator interface {
 	New() (string, error)
 }
 
-type NanoIdGenerator struct{}
+type NanoIDGenerator struct{}
 
-func (i NanoIdGenerator) New() (string, error) {
+func (i NanoIDGenerator) New() (string, error) {
 	return gonanoid.New()
 }
 
-func CreateIdGenerator() IdGenerator {
-	return NanoIdGenerator{}
+func CreateIDGenerator() IDGenerator {
+	return NanoIDGenerator{}
 }

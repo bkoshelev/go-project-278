@@ -26,13 +26,13 @@ import (
 
 var conn *pgxpool.Pool
 
-type MockIdGenerator struct {
+type MockIDGenerator struct {
 	mock.Mock
 }
 
 var mockShortName string = "test_short_url"
 
-func (m *MockIdGenerator) New() (string, error) {
+func (m *MockIDGenerator) New() (string, error) {
 	return mockShortName, nil
 }
 
@@ -57,7 +57,7 @@ func withTx(t *testing.T, fn func(ctx context.Context, services *service.ShortLi
 
 	qtx := db.New(tx)
 	qtx = qtx.WithTx(tx)
-	services := service.NewShortLinksService(qtx, new(MockIdGenerator), os.Getenv("HOST"))
+	services := service.NewShortLinksService(qtx, new(MockIDGenerator), os.Getenv("HOST"))
 	log.Print("Стартуем тест")
 	fn(ctx, services, tx)
 }
@@ -119,14 +119,14 @@ func TestGetLinks(t *testing.T) {
 		router = api.GetShortLinks(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 
 		expected := TestShortLink{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
-			ShortUrl:    os.Getenv("HOST") + "/r/" + "short",
+			ShortURL:    os.Getenv("HOST") + "/r/" + "short",
 		}
 
 		shortLinkJson, err := json.Marshal(newShortLink)
@@ -168,14 +168,14 @@ func TestGetLinksWithPagination(t *testing.T) {
 
 		for i := 0; i < 10; i++ {
 			initial = append(initial, TestShortLink{
-				OriginalUrl: "https://example.com/" + strconv.Itoa(i),
+				OriginalURL: "https://example.com/" + strconv.Itoa(i),
 				ShortName:   "short_" + strconv.Itoa(i),
-				ShortUrl:    os.Getenv("HOST") + "/r/" + "short_" + strconv.Itoa(i),
+				ShortURL:    os.Getenv("HOST") + "/r/" + "short_" + strconv.Itoa(i),
 			})
 		}
 		for _, shortLink := range initial {
 			newShortLink := api.CreateLinkPayload{
-				OriginalUrl: shortLink.OriginalUrl,
+				OriginalURL: shortLink.OriginalURL,
 				ShortName:   shortLink.ShortName,
 			}
 
@@ -213,9 +213,9 @@ func TestGetLinksWithPagination(t *testing.T) {
 }
 
 type TestShortLink struct {
-	OriginalUrl string `json:"original_url"`
+	OriginalURL string `json:"original_url"`
 	ShortName   string `json:"short_name"`
-	ShortUrl    string `json:"short_url"`
+	ShortURL    string `json:"short_url"`
 }
 
 func TestCreateLink(t *testing.T) {
@@ -225,14 +225,14 @@ func TestCreateLink(t *testing.T) {
 		router = api.CreateLink(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 
 		expected := TestShortLink{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
-			ShortUrl:    os.Getenv("HOST") + "/r/" + "short",
+			ShortURL:    os.Getenv("HOST") + "/r/" + "short",
 		}
 
 		shortLinkJson, _ := json.Marshal(newShortLink)
@@ -261,13 +261,13 @@ func TestCreateLinkWithRandomName(t *testing.T) {
 		router = api.CreateLink(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 		}
 
 		expected := TestShortLink{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   mockShortName,
-			ShortUrl:    os.Getenv("HOST") + "/r/" + mockShortName,
+			ShortURL:    os.Getenv("HOST") + "/r/" + mockShortName,
 		}
 
 		shortLinkJson, _ := json.Marshal(newShortLink)
@@ -289,22 +289,22 @@ func TestCreateLinkWithRandomName(t *testing.T) {
 	})
 }
 
-func TestGetLinksById(t *testing.T) {
+func TestGetLinksByID(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
 		router = api.CreateLink(router, services)
-		router = api.GetShortLinkById(router, services)
+		router = api.GetShortLinkByID(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 
 		expected := TestShortLink{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
-			ShortUrl:    os.Getenv("HOST") + "/r/" + "short",
+			ShortURL:    os.Getenv("HOST") + "/r/" + "short",
 		}
 
 		shortLinkJson, _ := json.Marshal(newShortLink)
@@ -372,7 +372,7 @@ func TestRedirectShortLink(t *testing.T) {
 		}
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 
@@ -431,7 +431,7 @@ func TestUpdateLink(t *testing.T) {
 		router = api.UpdateLink(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 
@@ -451,7 +451,7 @@ func TestUpdateLink(t *testing.T) {
 		}
 
 		updateShortLinkPayload := api.CreateLinkPayload{
-			OriginalUrl: "https://example2.com",
+			OriginalURL: "https://example2.com",
 			ShortName:   "short2",
 		}
 		updatedShortLinkJson, _ := json.Marshal(updateShortLinkPayload)
@@ -469,7 +469,7 @@ func TestUpdateLink(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		expected := db.UpdateShortLinkRow{ID: createdShortLink.ID, OriginalUrl: updatedShortLink.OriginalUrl,
+		expected := db.UpdateShortLinkRow{ID: createdShortLink.ID, OriginalURL: updatedShortLink.OriginalURL,
 			ShortName: updatedShortLink.ShortName}
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.ObjectsAreEqual(expected, updatedShortLink)
@@ -484,7 +484,7 @@ func TestDeleteLink(t *testing.T) {
 		router = api.DeleteLink(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 		shortLinkJson, _ := json.Marshal(newShortLink)
@@ -517,7 +517,7 @@ func TestValidationPayload(t *testing.T) {
 		router = api.CreateLink(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "google.com",
+			OriginalURL: "google.com",
 			ShortName:   "ioVWrhP1sjJNVsEsmavSBxjcgeW9fDfw8",
 		}
 
@@ -562,7 +562,7 @@ func TestValidationUniqShortName(t *testing.T) {
 		router = api.CreateLink(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 		shortLinkJson, _ := json.Marshal(newShortLink)
@@ -586,10 +586,10 @@ func TestGetLinkInvalidUri(t *testing.T) {
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
 		router = api.CreateLink(router, services)
-		router = api.GetShortLinkById(router, services)
+		router = api.GetShortLinkByID(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 
@@ -622,15 +622,15 @@ func TestGetLinkInvalidUri(t *testing.T) {
 	})
 }
 
-func TestGetLinkInvalidId(t *testing.T) {
+func TestGetLinkInvalidID(t *testing.T) {
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
 		router = api.CreateLink(router, services)
-		router = api.GetShortLinkById(router, services)
+		router = api.GetShortLinkByID(router, services)
 
 		newShortLink := api.CreateLinkPayload{
-			OriginalUrl: "https://example.com",
+			OriginalURL: "https://example.com",
 			ShortName:   "short",
 		}
 

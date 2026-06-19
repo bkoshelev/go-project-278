@@ -8,10 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *ShortLinksService) GetLinkById(c *gin.Context, id int32) (db.ShortLink, error) {
+func (s *ShortLinksService) GetLinkByID(c *gin.Context, id int32) (db.ShortLink, error) {
 	ctx := c.Request.Context()
 
-	shortLink, err := s.q.GetShortLinkById(ctx, id)
+	shortLink, err := s.q.GetShortLinkByID(ctx, id)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

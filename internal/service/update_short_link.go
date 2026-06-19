@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func (s *ShortLinksService) UpdateShortLink(c *gin.Context, id int32, originalUrl, shortName string) (db.UpdateShortLinkRow, error) {
+func (s *ShortLinksService) UpdateShortLink(c *gin.Context, id int32, originalURL, shortName string) (db.UpdateShortLinkRow, error) {
 	ctx := c.Request.Context()
 
 	if shortName == "" {
@@ -24,9 +24,9 @@ func (s *ShortLinksService) UpdateShortLink(c *gin.Context, id int32, originalUr
 
 	updatedShortLink, err := s.q.UpdateShortLink(ctx, db.UpdateShortLinkParams{
 		ID:          id,
-		OriginalUrl: originalUrl,
+		OriginalURL: originalURL,
 		ShortName:   shortName,
-		ShortUrl:    s.host + "/r/" + shortName,
+		ShortURL:    s.host + "/r/" + shortName,
 	})
 
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func (s *ShortLinksService) CreateShortLink(c *gin.Context, originalUrl, shortName string) (db.ShortLink, error) {
+func (s *ShortLinksService) CreateShortLink(c *gin.Context, originalURL, shortName string) (db.ShortLink, error) {
 	ctx := c.Request.Context()
 
 	if shortName == "" {
@@ -23,9 +23,9 @@ func (s *ShortLinksService) CreateShortLink(c *gin.Context, originalUrl, shortNa
 	}
 
 	shortLink, err := s.q.CreateShortLink(ctx, db.CreateShortLinkParams{
-		OriginalUrl: originalUrl,
+		OriginalURL: originalURL,
 		ShortName:   shortName,
-		ShortUrl:    s.host + "/r/" + shortName,
+		ShortURL:    s.host + "/r/" + shortName,
 	})
 
 	if err != nil {

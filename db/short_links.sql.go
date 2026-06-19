@@ -54,7 +54,7 @@ VALUES
 `
 
 type CreateLinkVisitParams struct {
-	Ip        netip.Addr  `json:"ip"`
+	IP        netip.Addr  `json:"ip"`
 	LinkID    pgtype.Int4 `json:"link_id"`
 	UserAgent string      `json:"user_agent"`
 	Referer   string      `json:"referer"`
@@ -63,7 +63,7 @@ type CreateLinkVisitParams struct {
 
 type CreateLinkVisitRow struct {
 	ID        pgtype.Int4        `json:"id"`
-	Ip        netip.Addr         `json:"ip"`
+	IP        netip.Addr         `json:"ip"`
 	LinkID    pgtype.Int4        `json:"link_id"`
 	UserAgent string             `json:"user_agent"`
 	Referer   string             `json:"referer"`
@@ -73,7 +73,7 @@ type CreateLinkVisitRow struct {
 
 func (q *Queries) CreateLinkVisit(ctx context.Context, arg CreateLinkVisitParams) (CreateLinkVisitRow, error) {
 	row := q.db.QueryRow(ctx, createLinkVisit,
-		arg.Ip,
+		arg.IP,
 		arg.LinkID,
 		arg.UserAgent,
 		arg.Referer,
@@ -82,7 +82,7 @@ func (q *Queries) CreateLinkVisit(ctx context.Context, arg CreateLinkVisitParams
 	var i CreateLinkVisitRow
 	err := row.Scan(
 		&i.ID,
-		&i.Ip,
+		&i.IP,
 		&i.LinkID,
 		&i.UserAgent,
 		&i.Referer,
@@ -108,19 +108,19 @@ VALUES
 `
 
 type CreateShortLinkParams struct {
-	OriginalUrl string `json:"original_url"`
+	OriginalURL string `json:"original_url"`
 	ShortName   string `json:"short_name"`
-	ShortUrl    string `json:"short_url"`
+	ShortURL    string `json:"short_url"`
 }
 
 func (q *Queries) CreateShortLink(ctx context.Context, arg CreateShortLinkParams) (ShortLink, error) {
-	row := q.db.QueryRow(ctx, createShortLink, arg.OriginalUrl, arg.ShortName, arg.ShortUrl)
+	row := q.db.QueryRow(ctx, createShortLink, arg.OriginalURL, arg.ShortName, arg.ShortURL)
 	var i ShortLink
 	err := row.Scan(
 		&i.ID,
-		&i.OriginalUrl,
+		&i.OriginalURL,
 		&i.ShortName,
-		&i.ShortUrl,
+		&i.ShortURL,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -141,9 +141,9 @@ func (q *Queries) DeleteShortLink(ctx context.Context, id int32) (ShortLink, err
 	var i ShortLink
 	err := row.Scan(
 		&i.ID,
-		&i.OriginalUrl,
+		&i.OriginalURL,
 		&i.ShortName,
-		&i.ShortUrl,
+		&i.ShortURL,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -173,7 +173,7 @@ type GetLinkVisitsParams struct {
 
 type GetLinkVisitsRow struct {
 	ID        pgtype.Int4        `json:"id"`
-	Ip        netip.Addr         `json:"ip"`
+	IP        netip.Addr         `json:"ip"`
 	LinkID    pgtype.Int4        `json:"link_id"`
 	UserAgent string             `json:"user_agent"`
 	Reffer    string             `json:"reffer"`
@@ -192,7 +192,7 @@ func (q *Queries) GetLinkVisits(ctx context.Context, arg GetLinkVisitsParams) ([
 		var i GetLinkVisitsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Ip,
+			&i.IP,
 			&i.LinkID,
 			&i.UserAgent,
 			&i.Reffer,
@@ -209,7 +209,7 @@ func (q *Queries) GetLinkVisits(ctx context.Context, arg GetLinkVisitsParams) ([
 	return items, nil
 }
 
-const getShortLinkById = `-- name: GetShortLinkById :one
+const getShortLinkByID = `-- name: GetShortLinkByID :one
 SELECT
     id,
     original_url,
@@ -222,14 +222,14 @@ WHERE
     id = $1
 `
 
-func (q *Queries) GetShortLinkById(ctx context.Context, id int32) (ShortLink, error) {
-	row := q.db.QueryRow(ctx, getShortLinkById, id)
+func (q *Queries) GetShortLinkByID(ctx context.Context, id int32) (ShortLink, error) {
+	row := q.db.QueryRow(ctx, getShortLinkByID, id)
 	var i ShortLink
 	err := row.Scan(
 		&i.ID,
-		&i.OriginalUrl,
+		&i.OriginalURL,
 		&i.ShortName,
-		&i.ShortUrl,
+		&i.ShortURL,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -253,9 +253,9 @@ func (q *Queries) GetShortLinkByShortName(ctx context.Context, shortName string)
 	var i ShortLink
 	err := row.Scan(
 		&i.ID,
-		&i.OriginalUrl,
+		&i.OriginalURL,
 		&i.ShortName,
-		&i.ShortUrl,
+		&i.ShortURL,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -292,9 +292,9 @@ func (q *Queries) GetShortLinks(ctx context.Context, arg GetShortLinksParams) ([
 		var i ShortLink
 		if err := rows.Scan(
 			&i.ID,
-			&i.OriginalUrl,
+			&i.OriginalURL,
 			&i.ShortName,
-			&i.ShortUrl,
+			&i.ShortURL,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -322,32 +322,32 @@ RETURNING id,
 `
 
 type UpdateShortLinkParams struct {
-	OriginalUrl string `json:"original_url"`
+	OriginalURL string `json:"original_url"`
 	ShortName   string `json:"short_name"`
-	ShortUrl    string `json:"short_url"`
+	ShortURL    string `json:"short_url"`
 	ID          int32  `json:"id"`
 }
 
 type UpdateShortLinkRow struct {
 	ID          int32  `json:"id"`
-	OriginalUrl string `json:"original_url"`
+	OriginalURL string `json:"original_url"`
 	ShortName   string `json:"short_name"`
-	ShortUrl    string `json:"short_url"`
+	ShortURL    string `json:"short_url"`
 }
 
 func (q *Queries) UpdateShortLink(ctx context.Context, arg UpdateShortLinkParams) (UpdateShortLinkRow, error) {
 	row := q.db.QueryRow(ctx, updateShortLink,
-		arg.OriginalUrl,
+		arg.OriginalURL,
 		arg.ShortName,
-		arg.ShortUrl,
+		arg.ShortURL,
 		arg.ID,
 	)
 	var i UpdateShortLinkRow
 	err := row.Scan(
 		&i.ID,
-		&i.OriginalUrl,
+		&i.OriginalURL,
 		&i.ShortName,
-		&i.ShortUrl,
+		&i.ShortURL,
 	)
 	return i, err
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (s *ShortLinksService) CreateLinkVisit(c *gin.Context, ip string, linkId int32, userAgent, referer string, status int32) (db.CreateLinkVisitRow, error) {
+func (s *ShortLinksService) CreateLinkVisit(c *gin.Context, ip string, linkID int32, userAgent, referer string, status int32) (db.CreateLinkVisitRow, error) {
 	ctx := c.Request.Context()
 
 	addr, err := netip.ParseAddr(ip)
@@ -18,8 +18,8 @@ func (s *ShortLinksService) CreateLinkVisit(c *gin.Context, ip string, linkId in
 	}
 
 	linkVisit, err := s.q.CreateLinkVisit(ctx, db.CreateLinkVisitParams{
-		Ip:        addr,
-		LinkID:    pgtype.Int4{Int32: linkId, Valid: true},
+		IP:        addr,
+		LinkID:    pgtype.Int4{Int32: linkID, Valid: true},
 		UserAgent: userAgent,
 		Referer:   referer,
 		Status:    status,

@@ -15,7 +15,7 @@ type Querier interface {
 	CreateShortLink(ctx context.Context, arg CreateShortLinkParams) (ShortLink, error)
 	DeleteShortLink(ctx context.Context, id int32) (ShortLink, error)
 	GetLinkVisits(ctx context.Context, arg GetLinkVisitsParams) ([]GetLinkVisitsRow, error)
-	GetShortLinkById(ctx context.Context, id int32) (ShortLink, error)
+	GetShortLinkByID(ctx context.Context, id int32) (ShortLink, error)
 	GetShortLinkByShortName(ctx context.Context, shortName string) (ShortLink, error)
 	GetShortLinks(ctx context.Context, arg GetShortLinksParams) ([]ShortLink, error)
 	UpdateShortLink(ctx context.Context, arg UpdateShortLinkParams) (UpdateShortLinkRow, error)

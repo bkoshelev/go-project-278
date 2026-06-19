@@ -115,16 +115,16 @@ func TestCreateAndGetShortLink(t *testing.T) {
 
 	withTx(t, func(ctx context.Context, q db.Querier, _ pgx.Tx) {
 		shortLink, err := q.CreateShortLink(ctx, db.CreateShortLinkParams{
-			OriginalUrl: "https://test.com",
+			OriginalURL: "https://test.com",
 			ShortName:   "random",
-			ShortUrl:    "www.short-link.com/random",
+			ShortURL:    "www.short-link.com/random",
 		})
 		if err != nil {
 			t.Fatalf("create short link: %v", err)
 		}
 		t.Logf("Создали новую запись в БД с ID: %v", shortLink.ID)
 
-		got, err := q.GetShortLinkById(ctx, shortLink.ID)
+		got, err := q.GetShortLinkByID(ctx, shortLink.ID)
 		if err != nil {
 			t.Fatalf("get by email: %v", err)
 		}

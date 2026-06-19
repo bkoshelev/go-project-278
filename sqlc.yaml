@@ -10,3 +10,9 @@ sql:
         sql_package: "pgx/v5"
         emit_json_tags: true
         emit_interface: true
+overrides:
+  go:
+    rename:
+      original_url: "OriginalURL"
+      short_url: "ShortURL"
+      ip: "IP"

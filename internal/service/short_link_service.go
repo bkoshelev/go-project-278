@@ -9,11 +9,11 @@ import (
 
 type ShortLinksService struct {
 	q           *db.Queries
-	idGenerator gen_id.IdGenerator
+	idGenerator gen_id.IDGenerator
 	host        string
 }
 
-func NewShortLinksService(q *db.Queries, id_gen gen_id.IdGenerator, host string) *ShortLinksService {
+func NewShortLinksService(q *db.Queries, id_gen gen_id.IDGenerator, host string) *ShortLinksService {
 	return &ShortLinksService{q, id_gen, host}
 }
 

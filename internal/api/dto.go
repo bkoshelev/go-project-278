@@ -1,7 +1,7 @@
 package api
 
 type CreateLinkPayload struct {
-	OriginalUrl string `json:"original_url" binding:"required"`
+	OriginalURL string `json:"original_url" binding:"required"`
 	ShortName   string `json:"short_name" binding:"omitempty,min=3,max=32"`
 }
 

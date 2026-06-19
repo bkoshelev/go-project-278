@@ -70,7 +70,7 @@ func main() {
 
 	queries := db.New(conn)
 
-	services := service.NewShortLinksService(queries, gen_id.CreateIdGenerator(), os.Getenv("HOST"))
+	services := service.NewShortLinksService(queries, gen_id.CreateIDGenerator(), os.Getenv("HOST"))
 	router := setupRouter()
 
 	router.Use(cors.New(
@@ -95,7 +95,7 @@ func main() {
 	router = api.GetShortLinks(router, services)
 	router = api.GetLinkVisits(router, services)
 	router = api.CreateLink(router, services)
-	router = api.GetShortLinkById(router, services)
+	router = api.GetShortLinkByID(router, services)
 	router = api.RedirectShortLink(router, services)
 	router = api.UpdateLink(router, services)
 	router = api.DeleteLink(router, services)
