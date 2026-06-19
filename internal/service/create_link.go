@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/bkoshelev/go-project-278/db"
 	"github.com/gin-gonic/gin"
@@ -30,16 +29,14 @@ func (s *ShortLinksService) CreateShortLink(c *gin.Context, originalUrl, shortNa
 	})
 
 	if err != nil {
-		var pgErr *pgconn.PgError
+		pgErr, ok := errors.AsType[*pgconn.PgError](err)
 
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-				return db.ShortLink{}, ServiceError{"short_name", ErrDuplicate}
-			}
-			if pgErr.ColumnName != "" {
-				return db.ShortLink{}, ServiceError{pgErr.ColumnName, err}
-			}
-			return db.ShortLink{}, fmt.Errorf("%v %v", ErrDB, err)
+		switch {
+
+		case ok && pgErr.Code == pgerrcode.UniqueViolation:
+			return db.ShortLink{}, ServiceError{"short_name", ErrDuplicate}
+		default:
+			return db.ShortLink{}, errors.Join(ErrDB, err)
 		}
 	}
 

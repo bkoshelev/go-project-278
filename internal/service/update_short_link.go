@@ -3,7 +3,6 @@ package service
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/bkoshelev/go-project-278/db"
 	"github.com/gin-gonic/gin"
@@ -16,11 +15,10 @@ func (s *ShortLinksService) UpdateShortLink(c *gin.Context, id int32, originalUr
 
 	if shortName == "" {
 		customShortName, err := s.idGenerator.New()
-
 		if err != nil {
 			return db.UpdateShortLinkRow{}, ServiceError{"short_name", ErrShortName}
-
 		}
+
 		shortName = customShortName
 	}
 
@@ -43,7 +41,7 @@ func (s *ShortLinksService) UpdateShortLink(c *gin.Context, id int32, originalUr
 		case ok && pgErr.ColumnName != "":
 			return db.UpdateShortLinkRow{}, ServiceError{pgErr.ColumnName, err}
 		default:
-			return db.UpdateShortLinkRow{}, fmt.Errorf("%v %v", ErrDB, err)
+			return db.UpdateShortLinkRow{}, errors.Join(ErrDB, err)
 		}
 
 	}

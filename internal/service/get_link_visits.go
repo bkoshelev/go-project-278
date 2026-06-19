@@ -1,7 +1,7 @@
 package service
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/bkoshelev/go-project-278/db"
 	"github.com/gin-gonic/gin"
@@ -13,7 +13,7 @@ func (s *ShortLinksService) GetLinkVisits(c *gin.Context, params db.GetLinkVisit
 	linkVisits, err := s.q.GetLinkVisits(ctx, params)
 
 	if err != nil {
-		return nil, fmt.Errorf("%v %v", ErrDB, err)
+		return nil, errors.Join(ErrDB, err)
 	}
 
 	return linkVisits, nil

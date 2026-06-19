@@ -22,29 +22,27 @@ func CreateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 	router.POST("/api/links", func(c *gin.Context) {
 		var req CreateLinkPayload
 		if err := bindPayload(c, &req); err != nil {
-
-			if ve, ok := errors.AsType[ValidationError](err); ok {
+			var ve ValidationError
+			if errors.As(err, &ve) {
 				c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": ve.toJSON()})
-			} else {
-				c.JSON(http.StatusBadRequest, gin.H{"error": InvalidErr})
+				return
 			}
 
+			c.JSON(http.StatusBadRequest, gin.H{"error": InvalidErr})
 			return
 		}
 
 		shortLink, err := services.CreateShortLink(c, req.OriginalUrl, req.ShortName)
 
 		if err != nil {
-			se, ok := errors.AsType[service.ServiceError](err)
-			switch {
-			case ok && errors.Is(se.Err, service.ErrShortName):
-			case ok && errors.Is(se.Err, service.ErrDuplicate):
+			var se service.ServiceError
+			if errors.As(err, &se) {
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
 				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
-			case errors.Is(se.Err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
 			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -72,22 +70,12 @@ func GetShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin
 			},
 		)
 		if err != nil {
-			switch {
-			case errors.Is(err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			}
-			return
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 
 		countLinks, err := services.CountLinks(c)
 		if err != nil {
-			switch {
-			case errors.Is(err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			}
-			return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 
 		c.Header("Content-Range", fmt.Sprintf(
@@ -104,22 +92,21 @@ func GetShortLinkById(router *gin.Engine, services *service.ShortLinksService) *
 		if err := c.ShouldBindUri(&params); err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
-
 		}
 
 		fmt.Println("PARAMS: ", params)
 
 		shortLink, err := services.GetLinkById(c, int32(params.ID))
 		if err != nil {
-			se, ok := errors.AsType[service.ServiceError](err)
-
-			switch {
-			case ok && errors.Is(se.Err, service.ErrNoRows):
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			case errors.Is(se.Err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			var se service.ServiceError
+			if errors.As(err, &se) {
+				if errors.Is(se.Err, service.ErrNoRows) {
+					c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+					return
+				}
 			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -134,11 +121,13 @@ func UpdateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		params := GetEntityUriParams{}
 		if err := c.ShouldBindUri(&params); err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
 		}
 
 		var req CreateLinkPayload
 		if err := bindPayload(c, &req); err != nil {
-			if ve, ok := errors.AsType[ValidationError](err); ok {
+			var ve ValidationError
+			if errors.As(err, &ve) {
 				c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": ve.toJSON()})
 			} else {
 				c.JSON(http.StatusBadRequest, gin.H{"error": InvalidErr})
@@ -154,17 +143,18 @@ func UpdateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		)
 
 		if err != nil {
-			se, ok := errors.AsType[service.ServiceError](err)
-			switch {
-			case ok && errors.Is(se.Err, service.ErrNoRows):
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			case ok && errors.Is(se.Err, service.ErrDuplicate):
+			var se service.ServiceError
+			if errors.As(err, &se) {
+				if errors.Is(se.Err, service.ErrNoRows) {
+					c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+					return
+				}
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
 				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
-			case errors.Is(err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
 			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -183,14 +173,18 @@ func DeleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 
 		err := services.DeleteShortLink(c, int32(params.ID))
 		if err != nil {
-			se, ok := errors.AsType[service.ServiceError](err)
-			switch {
-			case ok && errors.Is(se.Err, service.ErrNoRows):
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			case errors.Is(se.Err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			var se service.ServiceError
+			if errors.As(err, &se) {
+				if errors.Is(se.Err, service.ErrNoRows) {
+					c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+					return
+				}
+				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
+				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
+				return
 			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -219,24 +213,14 @@ func GetLinkVisits(router *gin.Engine, services *service.ShortLinksService) *gin
 				Offset: int32(begin),
 			},
 		)
-
 		if err != nil {
-			switch {
-			case errors.Is(err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		countLinks, err := services.CountLinkVisits(c)
-
 		if err != nil {
-			switch {
-			case errors.Is(err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -256,18 +240,19 @@ func RedirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 		}
 
 		shortLink, err := services.GetLinkByShortName(c, params.ShortName)
-
 		if err != nil {
-			se, ok := errors.AsType[service.ServiceError](err)
-
-			switch {
-			case ok && errors.Is(se.Err, service.ErrNoRows):
+			var se service.ServiceError
+			if errors.As(err, &se) {
+				if errors.Is(se.Err, service.ErrNoRows) {
+					c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+					return
+				}
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
-				c.JSON(http.StatusNotFound, gin.H{"errors": verr.toJSON()})
-			case errors.Is(se.Err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
+				return
 			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -281,19 +266,16 @@ func RedirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 		)
 
 		if err != nil {
-			se, ok := errors.AsType[service.ServiceError](err)
-
-			switch {
-			case ok && errors.Is(se.Err, service.ErrIp):
+			var se service.ServiceError
+			if errors.As(err, &se) {
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
 				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
-			case errors.Is(se.Err, service.ErrDB):
-			default:
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
 			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
 		c.Redirect(http.StatusFound, shortLink.OriginalUrl)
 	})
 
@@ -303,9 +285,7 @@ func RedirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 func UnknownRoute(router *gin.Engine) *gin.Engine {
 
 	router.NoRoute(func(c *gin.Context) {
-
 		c.Status(http.StatusNotFound)
-
 	})
 
 	return router
