@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,7 +18,7 @@ func (s *ShortLinksService) DeleteShortLink(c *gin.Context, id int32) error {
 			return ServiceError{"id", ErrNoRows}
 		}
 
-		return errors.Join(ErrDB, err)
+		return fmt.Errorf("%w %v", ErrDB, err)
 	}
 	return nil
 }

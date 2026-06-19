@@ -71,6 +71,7 @@ func GetShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin
 		)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 
 		countLinks, err := services.CountLinks(c)
@@ -94,9 +95,7 @@ func GetShortLinkByID(router *gin.Engine, services *service.ShortLinksService) *
 			return
 		}
 
-		fmt.Println("PARAMS: ", params)
-
-		shortLink, err := services.GetLinkById(c, int32(params.ID))
+		shortLink, err := services.GetLinkByID(c, int32(params.ID))
 		if err != nil {
 			var se service.ServiceError
 			if errors.As(err, &se) {
@@ -169,6 +168,7 @@ func DeleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 		params := GetEntityUriParams{}
 		if err := c.ShouldBindUri(&params); err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
 		}
 
 		err := services.DeleteShortLink(c, int32(params.ID))

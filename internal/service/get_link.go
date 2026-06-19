@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/bkoshelev/go-project-278/db"
 	"github.com/gin-gonic/gin"
@@ -17,7 +18,7 @@ func (s *ShortLinksService) GetLinkByID(c *gin.Context, id int32) (db.ShortLink,
 		if errors.Is(err, sql.ErrNoRows) {
 			return db.ShortLink{}, ServiceError{"id", ErrNoRows}
 		}
-		return db.ShortLink{}, errors.Join(ErrDB, err)
+		return db.ShortLink{}, fmt.Errorf("%w %v", ErrDB, err)
 	}
 	return shortLink, nil
 }
@@ -31,7 +32,7 @@ func (s *ShortLinksService) GetLinkByShortName(c *gin.Context, shortName string)
 		if errors.Is(err, sql.ErrNoRows) {
 			return db.ShortLink{}, ServiceError{"short_name", ErrNoRows}
 		}
-		return db.ShortLink{}, errors.Join(ErrDB, err)
+		return db.ShortLink{}, fmt.Errorf("%w %v", ErrDB, err)
 
 	}
 	return shortLink, nil
