@@ -11,7 +11,7 @@ import (
 
 // https://gin-gonic.com/en/docs/binding/bind-custom-unmarshaler/#using-bindunmarshaler
 func (r *Range) UnmarshalParam(param string) error {
-	var arr [2]int
+	var arr [2]int32
 
 	if err := json.Unmarshal([]byte(param), &arr); err != nil {
 		return fmt.Errorf("invalid format, expected [start,end]")

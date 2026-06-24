@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/bkoshelev/go-project-278/db"
 	"github.com/bkoshelev/go-project-278/internal/gen_id"
@@ -24,6 +25,22 @@ type ServiceError struct {
 
 func (e ServiceError) Error() string {
 	return e.Err.Error()
+}
+
+type DBError struct {
+	Err error
+}
+
+func (e DBError) Error() string {
+	return fmt.Sprintf("неизвестная ошибка взаимодействия с базой данных: %v", e.Err.Error())
+}
+
+func (e DBError) Unwrap() error {
+	return e.Err
+}
+
+func (e DBError) Is(target error) bool {
+	return target == ErrDB
 }
 
 var (

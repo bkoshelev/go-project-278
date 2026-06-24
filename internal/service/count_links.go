@@ -1,8 +1,6 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,7 +10,7 @@ func (s *ShortLinksService) CountLinks(c *gin.Context) (int64, error) {
 	count, err := s.q.CountShortLinks(ctx)
 
 	if err != nil {
-		return 0, fmt.Errorf("%w %v", ErrDB, err)
+		return 0, DBError{Err: err}
 	}
 
 	return count, nil

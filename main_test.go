@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -112,6 +113,7 @@ func TestPingRoute(t *testing.T) {
 }
 
 func TestGetLinks(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -158,6 +160,7 @@ func TestGetLinks(t *testing.T) {
 }
 
 func TestGetLinksWithPagination(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -219,6 +222,7 @@ type TestShortLink struct {
 }
 
 func TestCreateLink(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -255,6 +259,7 @@ func TestCreateLink(t *testing.T) {
 }
 
 func TestCreateLinkWithRandomName(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -290,6 +295,7 @@ func TestCreateLinkWithRandomName(t *testing.T) {
 }
 
 func TestGetLinksByID(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -339,6 +345,7 @@ func TestGetLinksByID(t *testing.T) {
 }
 
 func TestRedirectShortLink(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, tx pgx.Tx) {
@@ -424,6 +431,7 @@ func TestRedirectShortLink(t *testing.T) {
 }
 
 func TestUpdateLink(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -477,6 +485,7 @@ func TestUpdateLink(t *testing.T) {
 }
 
 func TestDeleteLink(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -511,6 +520,7 @@ func TestDeleteLink(t *testing.T) {
 }
 
 func TestValidationPayload(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -541,6 +551,7 @@ func TestValidationPayload(t *testing.T) {
 }
 
 func TestValidationJSON(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -556,6 +567,7 @@ func TestValidationJSON(t *testing.T) {
 }
 
 func TestValidationUniqShortName(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -582,6 +594,7 @@ func TestValidationUniqShortName(t *testing.T) {
 }
 
 func TestGetLinkInvalidUri(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -618,11 +631,12 @@ func TestGetLinkInvalidUri(t *testing.T) {
 		if err != nil {
 			panic("Ошибка преобразования полученного результата в JSON")
 		}
-		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
 func TestGetLinkInvalidID(t *testing.T) {
+	t.Parallel()
 	router := setupRouter()
 
 	withTx(t, func(ctx context.Context, services *service.ShortLinksService, _ pgx.Tx) {
@@ -661,4 +675,18 @@ func TestGetLinkInvalidID(t *testing.T) {
 		}
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
+}
+
+func TestUnwrapDBErrors(t *testing.T) {
+	t.Parallel()
+	newErr := service.DBError{Err: pgx.ErrTooManyRows}
+	assert.ErrorIs(t, newErr, service.ErrDB)
+
+	unwrapedErr := errors.Unwrap(newErr)
+	assert.ErrorIs(t, unwrapedErr, pgx.ErrTooManyRows)
+
+	var matchedErr service.DBError
+	assert.ErrorAs(t, newErr, &matchedErr)
+
+	assert.Equal(t, "неизвестная ошибка взаимодействия с базой данных"+": "+"too many rows in result set", newErr.Error())
 }

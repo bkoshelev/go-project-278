@@ -10,12 +10,12 @@ type RedirectUriParams struct {
 }
 
 type GetEntityUriParams struct {
-	ID int `uri:"id" binding:"required"`
+	ID int32 `uri:"id" binding:"required"`
 }
 
 type Range struct {
-	Begin int
-	End   int
+	Begin int32
+	End   int32
 }
 
 type GetMultipleEntityQueryParams struct {

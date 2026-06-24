@@ -3,7 +3,6 @@ package service
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/bkoshelev/go-project-278/db"
 	"github.com/gin-gonic/gin"
@@ -42,7 +41,7 @@ func (s *ShortLinksService) UpdateShortLink(c *gin.Context, id int32, originalUR
 		case ok && pgErr.ColumnName != "":
 			return db.UpdateShortLinkRow{}, ServiceError{pgErr.ColumnName, err}
 		default:
-			return db.UpdateShortLinkRow{}, fmt.Errorf("%w %v", ErrDB, err)
+			return db.UpdateShortLinkRow{}, DBError{Err: err}
 		}
 
 	}

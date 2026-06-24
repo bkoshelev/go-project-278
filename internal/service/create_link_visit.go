@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"net/netip"
 
 	"github.com/bkoshelev/go-project-278/db"
@@ -25,7 +24,7 @@ func (s *ShortLinksService) CreateLinkVisit(c *gin.Context, ip string, linkID in
 		Status:    status,
 	})
 	if err != nil {
-		return db.CreateLinkVisitRow{}, fmt.Errorf("%w %v", ErrDB, err)
+		return db.CreateLinkVisitRow{}, DBError{Err: err}
 	}
 
 	return linkVisit, nil

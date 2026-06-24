@@ -42,6 +42,12 @@ func CreateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 				return
 			}
 
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
+				return
+			}
+
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -66,17 +72,30 @@ func GetShortLinks(router *gin.Engine, services *service.ShortLinksService) *gin
 		shortLinks, err := services.GetLinks(c,
 			db.GetShortLinksParams{
 				Limit:  end - begin + 1,
-				Offset: int32(begin),
+				Offset: begin,
 			},
 		)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
+				return
+			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		countLinks, err := services.CountLinks(c)
 		if err != nil {
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
+				return
+			}
+
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
 
 		c.Header("Content-Range", fmt.Sprintf(
@@ -91,11 +110,11 @@ func GetShortLinkByID(router *gin.Engine, services *service.ShortLinksService) *
 	router.GET("/api/links/:id", func(c *gin.Context) {
 		params := GetEntityUriParams{}
 		if err := c.ShouldBindUri(&params); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		shortLink, err := services.GetLinkByID(c, int32(params.ID))
+		shortLink, err := services.GetLinkByID(c, params.ID)
 		if err != nil {
 			var se service.ServiceError
 			if errors.As(err, &se) {
@@ -103,6 +122,12 @@ func GetShortLinkByID(router *gin.Engine, services *service.ShortLinksService) *
 					c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 					return
 				}
+			}
+
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
+				return
 			}
 
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -119,7 +144,7 @@ func UpdateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 	router.PUT("/api/links/:id", func(c *gin.Context) {
 		params := GetEntityUriParams{}
 		if err := c.ShouldBindUri(&params); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -136,7 +161,7 @@ func UpdateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 
 		updatedShortLink, err := services.UpdateShortLink(
 			c,
-			int32(params.ID),
+			params.ID,
 			req.OriginalURL,
 			req.ShortName,
 		)
@@ -150,6 +175,12 @@ func UpdateLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 				}
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
 				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
+				return
+			}
+
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
 				return
 			}
 
@@ -167,11 +198,11 @@ func DeleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 	router.DELETE("/api/links/:id", func(c *gin.Context) {
 		params := GetEntityUriParams{}
 		if err := c.ShouldBindUri(&params); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		err := services.DeleteShortLink(c, int32(params.ID))
+		err := services.DeleteShortLink(c, params.ID)
 		if err != nil {
 			var se service.ServiceError
 			if errors.As(err, &se) {
@@ -181,6 +212,12 @@ func DeleteLink(router *gin.Engine, services *service.ShortLinksService) *gin.En
 				}
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
 				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
+				return
+			}
+
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
 				return
 			}
 
@@ -210,16 +247,28 @@ func GetLinkVisits(router *gin.Engine, services *service.ShortLinksService) *gin
 			c,
 			db.GetLinkVisitsParams{
 				Limit:  end - begin + 1,
-				Offset: int32(begin),
+				Offset: begin,
 			},
 		)
 		if err != nil {
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
+				return
+			}
+
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		countLinks, err := services.CountLinkVisits(c)
 		if err != nil {
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
+				return
+			}
+
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -236,7 +285,8 @@ func RedirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 	router.GET("/r/:code", func(c *gin.Context) {
 		params := RedirectUriParams{}
 		if err := c.ShouldBindUri(&params); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 
 		shortLink, err := services.GetLinkByShortName(c, params.ShortName)
@@ -249,6 +299,12 @@ func RedirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 				}
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
 				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
+				return
+			}
+
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
 				return
 			}
 
@@ -270,6 +326,12 @@ func RedirectShortLink(router *gin.Engine, services *service.ShortLinksService) 
 			if errors.As(err, &se) {
 				verr := ValidationError{FieldName: se.FieldName, Err: se.Err}
 				c.JSON(http.StatusBadRequest, gin.H{"errors": verr.toJSON()})
+				return
+			}
+
+			var dbErr service.DBError
+			if errors.As(err, &dbErr) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
 				return
 			}
 
